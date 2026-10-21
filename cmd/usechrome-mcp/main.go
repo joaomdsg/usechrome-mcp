@@ -28,12 +28,12 @@ type config struct {
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	code := run(ctx, os.Args[1:], os.Stdout, os.Stderr)
+	code := run(ctx, os.Args[1:], &mcp.StdioTransport{}, os.Stdout, os.Stderr)
 	stop()
 	os.Exit(code)
 }
 
-func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+func run(ctx context.Context, args []string, transport mcp.Transport, stdout, stderr io.Writer) int {
 	cfg, err := parseFlags(args, stderr)
 	if errors.Is(err, flag.ErrHelp) {
 		return 0
@@ -46,7 +46,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	b := chrome.New(ctx, cfg.browser)
-	err = server.New(version, b).Run(ctx, &mcp.StdioTransport{})
+	err = server.New(version, b).Run(ctx, transport)
 	// After a signal the browser is already going down with ctx, so neither
 	// error says anything the user needs.
 	if cerr := b.Close(); cerr != nil && ctx.Err() == nil {

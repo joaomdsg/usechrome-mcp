@@ -19,7 +19,7 @@ func site(t *testing.T) *httptest.Server {
 	mux := http.NewServeMux()
 	page := func(title string) http.HandlerFunc {
 		return func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprintf(w, "<!doctype html><title>%s</title><p>%s</p>", title, title)
+			_, _ = fmt.Fprintf(w, "<!doctype html><title>%s</title><p>%s</p>", title, title)
 		}
 	}
 	mux.HandleFunc("/{$}", page("Home"))

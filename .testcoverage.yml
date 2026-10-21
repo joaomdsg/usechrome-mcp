@@ -1,0 +1,9 @@
+# Gate for the commit stage's unit tests. The acceptance harness is excluded
+# because the acceptance stage exercises it, not unit tests.
+profile: cover.out
+threshold:
+  package: 70
+  total: 80
+exclude:
+  paths:
+    - ^acceptance/

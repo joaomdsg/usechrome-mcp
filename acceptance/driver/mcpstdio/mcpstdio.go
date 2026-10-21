@@ -30,7 +30,7 @@ func (e *ToolError) Error() string { return e.Tool + ": " + e.Text }
 func Start(ctx context.Context, stderr io.Writer, bin string, args ...string) (*Client, error) {
 	// Not CommandContext: Close must stop the process gracefully, after the
 	// test's context is already cancelled.
-	cmd := exec.Command(bin, args...)
+	cmd := exec.Command(bin, args...) //nolint:gosec // G204: launching the binary under test is the point
 	cmd.Stderr = stderr
 	client := mcp.NewClient(&mcp.Implementation{Name: "usechrome-mcp-acceptance", Version: "0"}, nil)
 	session, err := client.Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
