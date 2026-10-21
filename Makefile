@@ -55,6 +55,11 @@ release:
 commit-messages:
 	scripts/check-commit-messages.sh $(COMMITS)
 
+# The commit that squash-merging a pull request titled PR_TITLE puts on main;
+# the Dependabot workflow merges with the title as the whole message.
+squash-message:
+	scripts/check-commit-messages.sh -m "$$PR_TITLE"
+
 acceptance:
 	USECHROME_MCP_BIN=$(CURDIR)/$(BIN) go test -tags acceptance -count=1 -timeout 5m ./acceptance/...
 

@@ -1,0 +1,24 @@
+# Dependabot's pull requests merge themselves once the pipeline's required
+# jobs pass. Squashed with the title as the whole message, their commits land
+# as one line, which the pipeline checks as it checks every other message.
+name: dependabot
+
+on: pull_request
+
+permissions: {}
+
+jobs:
+  auto-merge:
+    name: dependabot / auto-merge
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - run: gh pr merge --auto --squash --subject "$PR_TITLE" --body "" "$PR_URL"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

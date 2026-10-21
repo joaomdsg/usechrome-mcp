@@ -235,10 +235,18 @@ Read or change a tab's viewport, as DevTools device mode does. With no arguments
 
 ## How changes ship
 
-There is no code review. Every commit to `main` goes through the
-[pipeline](.github/workflows/pipeline.yml), and the pipeline is the only gate:
-what a reviewer would check, it checks, and it fails the build when a check
-fails.
+There is no code review. Every change reaches `main` through a pull request,
+and the [pipeline](.github/workflows/pipeline.yml) is the only gate: what a
+reviewer would check, it checks, and it fails the build when a check fails. A
+ruleset on `main` requires the five commit and acceptance jobs to pass on a
+branch that is up to date with `main`, takes no approvals, and keeps history
+linear. Pull requests are opened with auto-merge, so they merge themselves once
+the jobs pass: rebased, so each small commit lands as it was written.
+Dependabot's weekly pull request, one for Go modules, actions and the base
+image together ([config](.github/dependabot.yml)), is squashed into a single
+commit titled as the pull request
+([workflow](.github/workflows/dependabot.yml)). When another merge
+leaves it behind `main`, a `@dependabot rebase` comment brings it up to date.
 
 1. **Commit stage**, three jobs in parallel, each limited to 5 minutes:
    - `commit / test`: build, `go mod tidy`, `go vet`, unit tests with
@@ -250,8 +258,9 @@ fails.
      statements, nesting complexity 5, maintainability index 20, no
      duplicate blocks of 150 tokens, and a doc comment on everything exported.
    - `commit / audit`: govulncheck, gitleaks over the whole history,
-     actionlint, `goreleaser check` on the release configuration, and commit
-     messages of one imperative line of at most 72 characters.
+     actionlint, `goreleaser check` on the release configuration, and the
+     message of every commit the pull request will put on `main`: one
+     imperative line of at most 72 characters.
 2. **Acceptance stage**, two jobs, both against the binary the commit stage
    built: `acceptance / binary` runs it over stdio against real headless
    Chromium and local fixture pages; `acceptance / image` runs the same tests

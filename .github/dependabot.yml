@@ -1,18 +1,23 @@
 # Dependency updates arrive as pull requests that the pipeline gates like any
-# other change. Each ecosystem's updates come grouped into one pull request a
-# week. The cooldown leaves a new release a week for its maintainers or
-# scanners to catch a compromised or broken version before it lands here.
+# other change, and merge themselves once it passes. All ecosystems share one
+# pull request a week: the ruleset requires a branch to be up to date with
+# main, so separate ones would fall behind each other as each merged. The
+# cooldown leaves a new release a week for its maintainers or scanners to
+# catch a compromised or broken version before it lands here.
 version: 2
+
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: weekly
+
 updates:
   - package-ecosystem: gomod
     directories: ["/", "/devtools/*"]
-    schedule:
-      interval: weekly
+    multi-ecosystem-group: dependencies
+    patterns: ["*"]
     cooldown:
       default-days: 7
-    groups:
-      go:
-        patterns: ["*"]
     # GoReleaser 2.18 needs Go 1.27, and setup-go runs only the Go that go.mod
     # names (1.26.10); one failing bump would hold back the whole group.
     ignore:
@@ -21,17 +26,14 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
-    schedule:
-      interval: weekly
+    multi-ecosystem-group: dependencies
+    patterns: ["*"]
     cooldown:
       default-days: 7
-    groups:
-      actions:
-        patterns: ["*"]
 
   - package-ecosystem: docker
     directory: /
-    schedule:
-      interval: weekly
+    multi-ecosystem-group: dependencies
+    patterns: ["*"]
     cooldown:
       default-days: 7
