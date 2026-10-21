@@ -1,11 +1,13 @@
 # The deployment pipeline. Every change goes through it, and it is the only
-# gate: the commit stage gives feedback in under five minutes, then the
-# acceptance stage tests the very binary the commit stage built.
+# gate: the commit stage gives feedback in under five minutes, the acceptance
+# stage tests the very binary the commit stage built, alone and inside the
+# release image, and a version tag releases that binary once both pass.
 name: pipeline
 
 on:
   push:
     branches: [main, "ci/**"]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -22,13 +24,20 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # check-latest resolves the newest patch in every job, so the release
+      # job builds with the Go this job built and tested with. setup-go sets
+      # GOTOOLCHAIN=local, so a cached older patch would also fail the tools
+      # whose go.mod needs a newer one.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          check-latest: true
           cache-dependency-path: |
             go.sum
             devtools/*/go.sum
       - run: make build tidy vet test coverage
+        env:
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: usechrome-mcp
@@ -45,6 +54,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          check-latest: true
           cache-dependency-path: |
             go.sum
             devtools/*/go.sum
@@ -61,10 +71,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          check-latest: true
           cache-dependency-path: |
             go.sum
             devtools/*/go.sum
-      - run: make vuln secrets workflows
+      - run: make vuln secrets workflows release-check
       - name: commit messages
         # Only the commits main does not have yet; before main exists, all.
         run: |
@@ -73,7 +84,7 @@ jobs:
           make commit-messages COMMITS="$range"
 
   acceptance:
-    name: acceptance
+    name: acceptance / binary
     needs: [test, lint, audit]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -82,9 +93,79 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          check-latest: true
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: usechrome-mcp
           path: dist
       # Artifacts lose the executable bit in transit.
       - run: chmod +x dist/usechrome-mcp && make acceptance
+
+  acceptance-image:
+    name: acceptance / image
+    needs: [test, lint, audit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: usechrome-mcp
+          path: dist
+      - run: chmod +x dist/usechrome-mcp && make acceptance-image
+
+  release:
+    name: release
+    if: github.ref_type == 'tag'
+    needs: [acceptance, acceptance-image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write # the GitHub Release
+      packages: write # the image on GHCR
+      id-token: write # the Sigstore certificate that signs attestations
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the changelog is the history since the last tag
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache-dependency-path: |
+            go.sum
+            devtools/*/go.sum
+      # Outside the checkout, which GoReleaser requires to be clean.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: usechrome-mcp
+          path: ${{ runner.temp }}/tested
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+      - run: make release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TESTED_BIN: ${{ runner.temp }}/tested/usechrome-mcp
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: dist/checksums.txt
+      - id: image
+        run: echo "digest=$(docker buildx imagetools inspect "ghcr.io/joaomdsg/usechrome-mcp:$GITHUB_REF_NAME" --format '{{.Manifest.Digest}}')" >>"$GITHUB_OUTPUT"
+      # Storage records exist only for organization-owned repositories.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ghcr.io/joaomdsg/usechrome-mcp
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false

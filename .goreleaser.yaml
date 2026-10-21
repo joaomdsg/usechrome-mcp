@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# The release stage, run by the pipeline on a version tag once both acceptance
+# jobs pass. `make release-check` validates this file in the commit stage.
+version: 2
+
+project_name: usechrome-mcp
+
+builds:
+  - main: ./cmd/usechrome-mcp
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    # The same flags as `make build`, so the linux/amd64 build reproduces the
+    # binary the acceptance stage tested, which the hook checks.
+    ldflags: ["-s -w -X main.version={{.Tag}}"]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{.CommitTimestamp}}"
+    hooks:
+      post:
+        - cmd: scripts/check-release-binary.sh "{{.Path}}" "{{.Target}}"
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+sboms:
+  - artifacts: archive
+
+dockers_v2:
+  - images: [ghcr.io/joaomdsg/usechrome-mcp]
+    tags: ["{{.Tag}}", "{{if not .Prerelease}}latest{{end}}"]
+    labels: &oci
+      org.opencontainers.image.title: usechrome-mcp
+      org.opencontainers.image.description: MCP server that gives an AI agent a real Chromium browser
+      org.opencontainers.image.source: https://github.com/joaomdsg/usechrome-mcp
+      org.opencontainers.image.version: "{{.Tag}}"
+      org.opencontainers.image.revision: "{{.FullCommit}}"
+      org.opencontainers.image.created: "{{.CommitDate}}"
+    # Labels sit on each platform's image; annotations put the same keys on
+    # the multi-platform index that a pull resolves first.
+    annotations: *oci
+
+changelog:
+  sort: asc
