@@ -1,12 +1,15 @@
-# The deployment pipeline. Every change goes through it, and it is the only
-# gate: the commit stage gives feedback in under five minutes, the acceptance
-# stage tests the very binary the commit stage built, alone and inside the
-# release image, and a version tag releases that binary once both pass.
+# The deployment pipeline and the only gate on main: the ruleset on main
+# requires its commit and acceptance jobs, and a pull request merges itself
+# once they pass. The commit stage gives feedback in under five minutes, the
+# acceptance stage tests the very binary the commit stage built, alone and
+# inside the release image, and a version tag releases that binary.
 name: pipeline
 
 on:
+  pull_request:
+    branches: [main]
   push:
-    branches: [main, "ci/**"]
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -15,7 +18,9 @@ permissions:
 
 concurrency:
   group: pipeline-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push to a pull request supersedes its running checks; a run on main
+  # or a tag always finishes, since a release cut short is half published.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -72,12 +77,24 @@ jobs:
             go.sum
             devtools/*/go.sum
       - run: make vuln secrets workflows release-check
+      # The messages that will land on main: a rebase merge keeps a pull
+      # request's commits, and Dependabot's pull requests merge squashed into
+      # one commit whose message is the title. A push has the commits main
+      # does not have yet, which for a tag on main is none.
       - name: commit messages
-        # Only the commits main does not have yet; before main exists, all.
+        env:
+          DEPENDABOT: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          range=HEAD
-          if git rev-parse -q --verify origin/main >/dev/null; then range=origin/main..HEAD; fi
-          make commit-messages COMMITS="$range"
+          if [[ $DEPENDABOT == true ]]; then
+            make squash-message
+          elif [[ -n $BASE ]]; then
+            make commit-messages COMMITS="$BASE..$HEAD_SHA"
+          else
+            make commit-messages COMMITS=origin/main..HEAD
+          fi
 
   acceptance:
     name: acceptance / binary
