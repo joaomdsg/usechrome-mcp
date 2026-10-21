@@ -144,6 +144,19 @@ func (l *netLog) requests(loaders map[cdp.LoaderID]bool) []browser.Request {
 	return out
 }
 
+// loaded returns the latest exchange that loaded url without failing.
+func (l *netLog) loaded(url string) (network.RequestID, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, id := range slices.Backward(l.order) {
+		x := l.byID[id]
+		if x.done && x.failure == "" && len(x.hops) > 0 && x.hops[len(x.hops)-1].request.URL == url {
+			return id, true
+		}
+	}
+	return "", false
+}
+
 func (l *netLog) find(id string) (logged, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
