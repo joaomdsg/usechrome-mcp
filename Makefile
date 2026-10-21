@@ -1,5 +1,6 @@
 # The pipeline's checks, runnable locally with the same pinned tools. CI calls
-# these targets, so a green `make commit-stage acceptance` predicts a green run.
+# these targets, so a green `make commit-stage acceptance acceptance-image`
+# predicts a green run.
 
 tool = go tool -modfile=devtools/$(1)/go.mod $(1)
 BIN := dist/usechrome-mcp
@@ -10,7 +11,7 @@ VERSION ?= dev
 IMAGE ?= usechrome-mcp:acceptance
 PLATFORM := linux/$(shell go env GOARCH)
 
-.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows release-check release commit-messages acceptance image acceptance-image readme
+.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows release-check release commit-messages acceptance acceptance-image readme
 
 commit-stage: build tidy vet test coverage lint vuln secrets workflows release-check
 
@@ -57,14 +58,13 @@ commit-messages:
 acceptance:
 	USECHROME_MCP_BIN=$(CURDIR)/$(BIN) go test -tags acceptance -count=1 -timeout 5m ./acceptance/...
 
-# Builds the release image around $(BIN), in the context layout GoReleaser uses.
-image:
+# Builds the release image around $(BIN), in the context layout GoReleaser
+# uses, and runs the acceptance tests against it.
+acceptance-image:
 	rm -rf dist/image
 	mkdir -p dist/image/$(PLATFORM)
 	cp $(BIN) dist/image/$(PLATFORM)/
 	docker build --platform $(PLATFORM) -t $(IMAGE) -f Dockerfile dist/image
-
-acceptance-image: image
 	USECHROME_MCP_BIN=$(CURDIR)/scripts/run-image.sh USECHROME_MCP_IMAGE=$(IMAGE) go test -tags acceptance -count=1 -timeout 5m ./acceptance/...
 
 readme:
