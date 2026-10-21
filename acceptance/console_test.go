@@ -29,6 +29,8 @@ func TestConsoleShowsWhatThePageLogged(t *testing.T) {
 	site := dsl.NewSite(t)
 	agent := dsl.NewAgent(t)
 	agent.Open(site.URL("/shop.html"))
+	// shop.js logs on load, which waits for the image, so the 404 comes first
+	// however the two downloads race.
 	want := `error: Failed to load resource: the server responded with a status of 404 (Not Found)
     at ` + site.URL("/missing-logo.png") + `
 log: shop ready {"items":0}
