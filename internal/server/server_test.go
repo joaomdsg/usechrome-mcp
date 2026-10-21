@@ -18,6 +18,10 @@ func (noBrowser) Navigate(context.Context, browser.NavRequest) (browser.Page, er
 	return browser.Page{}, errors.New("no browser")
 }
 
+func (noBrowser) Eval(context.Context, browser.EvalRequest) (browser.EvalResult, error) {
+	return browser.EvalResult{}, errors.New("no browser")
+}
+
 func connect(t *testing.T) *mcp.ClientSession {
 	t.Helper()
 	serverT, clientT := mcp.NewInMemoryTransports()
@@ -43,7 +47,7 @@ func TestServerReportsNameAndVersion(t *testing.T) {
 	}
 }
 
-func TestServerListsNavigateTool(t *testing.T) {
+func TestServerListsEveryTool(t *testing.T) {
 	res, err := connect(t).ListTools(t.Context(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +56,8 @@ func TestServerListsNavigateTool(t *testing.T) {
 	for _, tool := range res.Tools {
 		names = append(names, tool.Name)
 	}
-	if !slices.Contains(names, "navigate") {
-		t.Errorf("tools = %v, want navigate", names)
+	slices.Sort(names)
+	if want := []string{"eval", "navigate"}; !slices.Equal(names, want) {
+		t.Errorf("tools = %v, want %v", names, want)
 	}
 }

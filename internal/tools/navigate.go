@@ -1,4 +1,3 @@
-// Package tools implements the MCP tools that usechrome-mcp exposes.
 package tools
 
 import (
@@ -6,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/joaomdsg/usechrome-mcp/internal/browser"
@@ -21,7 +19,7 @@ type Navigator interface {
 type NavigateInput struct {
 	Action string `json:"action,omitempty" jsonschema:"goto (default), back, forward or reload"`
 	URL    string `json:"url,omitempty" jsonschema:"address to open; required for goto"`
-	Tab    string `json:"tab,omitempty" jsonschema:"tab id from the tabs tool; default is the current tab"`
+	Target
 }
 
 // NavigateOutput is the document a tab shows after the navigate tool runs.
@@ -58,14 +56,4 @@ func navigateTool() *mcp.Tool {
 		Description: "Open a URL in a tab, or go back, forward or reload. Returns the final URL after redirects, the HTTP status and the title.",
 		InputSchema: in,
 	}
-}
-
-// inputSchema panics instead of returning an error because the input types
-// are fixed at compile time, so any test run that registers the tool finds it.
-func inputSchema[T any]() *jsonschema.Schema {
-	s, err := jsonschema.For[T](nil)
-	if err != nil {
-		panic(err)
-	}
-	return s
 }
