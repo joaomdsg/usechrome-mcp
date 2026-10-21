@@ -14,7 +14,9 @@ type Site struct {
 }
 
 // NewSite serves the fixtures for the test. Besides the files in testdata it
-// has /redirect, a 302 to /second.html; any other path is a 404 with a body.
+// has /redirect, a 302 to /second.html, and an empty /favicon.ico, so that
+// the browser's request for it logs no failed load in the console; any
+// other path is a 404 with a body.
 func NewSite(t testing.TB) *Site {
 	t.Helper()
 	// go test runs in the package directory, so this is acceptance/testdata.
@@ -24,6 +26,7 @@ func NewSite(t testing.TB) *Site {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.Dir("testdata")))
 	mux.Handle("/redirect", http.RedirectHandler("/second.html", http.StatusFound))
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return &Site{srv: srv}
