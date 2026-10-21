@@ -29,7 +29,7 @@ type Capture struct {
 func (a *Agent) Screenshot(c Capture) Shot {
 	a.t.Helper()
 	var s Shot
-	images := a.call("screenshot", c, &s)
+	images := a.call("screenshot", c, &s).Images
 	if len(images) != 1 {
 		a.t.Fatalf("screenshot returned %d images, want 1", len(images))
 	}
