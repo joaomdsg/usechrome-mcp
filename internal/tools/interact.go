@@ -28,10 +28,17 @@ type InteractInput struct {
 
 // InteractOutput describes the page after the action.
 type InteractOutput struct {
-	URL       string   `json:"url"`
-	Title     string   `json:"title"`
-	Navigated bool     `json:"navigated" jsonschema:"whether the action moved the tab to another page or within its page"`
-	Dialogs   []string `json:"dialogs,omitempty" jsonschema:"JavaScript dialogs the action opened, as type: message; all were accepted"`
+	URL       string      `json:"url"`
+	Title     string      `json:"title"`
+	Navigated bool        `json:"navigated" jsonschema:"whether the action moved the tab to another page or within its page"`
+	Dialogs   []string    `json:"dialogs,omitempty" jsonschema:"JavaScript dialogs the action opened, as type: message; all were accepted"`
+	Opened    []OpenedTab `json:"opened,omitempty" jsonschema:"tabs the action opened, as a link with target=_blank does; the current tab stays the same"`
+}
+
+// OpenedTab is a tab an action opened.
+type OpenedTab struct {
+	Tab string `json:"tab" jsonschema:"tab id, to select it with the tabs tool or pass it to another tool"`
+	URL string `json:"url" jsonschema:"the page the tab was asked to load"`
 }
 
 // gestureArg names, for each action, the argument it takes, if any, and
@@ -60,7 +67,11 @@ func AddInteract(s *mcp.Server, in Interacter) {
 		if err != nil {
 			return nil, InteractOutput{}, err
 		}
-		return nil, InteractOutput{URL: r.URL, Title: r.Title, Navigated: r.Navigated, Dialogs: r.Dialogs}, nil
+		out := InteractOutput{URL: r.URL, Title: r.Title, Navigated: r.Navigated, Dialogs: r.Dialogs}
+		for _, t := range r.Opened {
+			out.Opened = append(out.Opened, OpenedTab{Tab: t.ID, URL: t.URL})
+		}
+		return nil, out, nil
 	})
 }
 
@@ -111,7 +122,7 @@ func interactTool() *mcp.Tool {
 			"click and hover scroll the element into view and use the mouse at its centre; they fail if it is disabled, hidden or covered. " +
 			"type replaces the element's content key by key, or types at the focus when no element is named. " +
 			"press sends a key to the element, or else to the focus. select picks an option of a <select> by value or label. " +
-			"When the action starts a navigation, the call waits for the new page to load. JavaScript dialogs are accepted and listed.",
+			"When the action starts a navigation, the call waits for the new page to load. JavaScript dialogs are accepted and listed, and so are the tabs the action opened.",
 		InputSchema: in,
 	}
 }

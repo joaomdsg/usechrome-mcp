@@ -42,7 +42,9 @@ func TestAgentFollowsALinkThatOpensANewTab(t *testing.T) {
 	site := dsl.NewSite(t)
 	agent := dsl.NewAgent(t)
 	agent.Open(site.URL("/terms.html"))
-	agent.Click(dsl.CSS("#terms"))
+	if after := agent.Click(dsl.CSS("#terms")); !slices.Equal(after.Opened, []dsl.Opened{{Tab: "t2", URL: site.URL("/second.html")}}) {
+		t.Errorf("click on a link to a new tab opened %+v, want t2 at second.html", after.Opened)
+	}
 	want := []string{`t1 "Sign Up" ` + site.URL("/terms.html") + " (current)", `t2 "Second Page" ` + site.URL("/second.html")}
 	if got := agent.Tabs(2); !slices.Equal(got, want) {
 		t.Fatalf("tabs after a link to a new tab = %q, want %q", got, want)

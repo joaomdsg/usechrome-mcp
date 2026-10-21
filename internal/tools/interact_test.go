@@ -63,6 +63,15 @@ func TestInteractReturnsThePageAfter(t *testing.T) {
 	}
 }
 
+func TestInteractReturnsTheTabsTheActionOpened(t *testing.T) {
+	t.Parallel()
+	in := &fakeInteracter{r: browser.Interaction{URL: "http://x/", Opened: []browser.Tab{{ID: "t2", URL: "http://x/terms"}, {ID: "t3", URL: "http://x/help"}}}}
+	got := decode[tools.InteractOutput](t, call(t, interactSession(t, in), "interact", map[string]any{"action": "click", "ref": "e1"}))
+	if want := []tools.OpenedTab{{Tab: "t2", URL: "http://x/terms"}, {Tab: "t3", URL: "http://x/help"}}; !slices.Equal(got.Opened, want) {
+		t.Errorf("opened = %+v, want %+v", got.Opened, want)
+	}
+}
+
 func TestInteractRejectsArgumentsTheActionDoesNotTake(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
