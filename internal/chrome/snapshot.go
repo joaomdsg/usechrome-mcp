@@ -2,18 +2,14 @@ package chrome
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/chromedp/cdproto/accessibility"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
-	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 
 	"github.com/joaomdsg/usechrome-mcp/internal/browser"
 )
-
-const snapshotGroup = "usechrome-snapshot"
 
 // Snapshot reads the accessibility tree of a tab's page, or of the element
 // req.Selector picks.
@@ -45,18 +41,12 @@ func selectedNode(ctx context.Context, sel string) (cdp.BackendNodeID, error) {
 	if sel == "" {
 		return 0, nil
 	}
-	obj, err := chromedp.Run(ctx, chromedp.Evaluate[*runtime.RemoteObject](
-		fmt.Sprintf("document.querySelector(%s)", jsonString(sel)), chromedp.EvalObjectGroup(snapshotGroup)))
+	defer releaseElements(ctx)
+	el, err := element(ctx, "", sel)
 	if err != nil {
 		return 0, err
 	}
-	defer func() {
-		_, _ = chromedp.Call(ctx, runtime.ReleaseObjectGroup, runtime.ReleaseObjectGroupParams{ObjectGroup: snapshotGroup})
-	}()
-	if obj.ObjectID == "" {
-		return 0, fmt.Errorf("no element matches %q", sel)
-	}
-	res, err := chromedp.Call(ctx, dom.DescribeNode, dom.DescribeNodeParams{ObjectID: obj.ObjectID})
+	res, err := chromedp.Call(ctx, dom.DescribeNode, dom.DescribeNodeParams{ObjectID: el})
 	if err != nil {
 		return 0, err
 	}

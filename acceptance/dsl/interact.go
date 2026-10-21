@@ -1,0 +1,72 @@
+package dsl
+
+// Element names an element by its ref from a snapshot or by a CSS selector.
+type Element struct {
+	Ref      string `json:"ref,omitempty"`
+	Selector string `json:"selector,omitempty"`
+}
+
+// Ref names the element a snapshot gave ref.
+func Ref(ref string) Element { return Element{Ref: ref} }
+
+// CSS names the element selector picks.
+func CSS(selector string) Element { return Element{Selector: selector} }
+
+// After is the page after an action.
+type After struct {
+	URL       string   `json:"url"`
+	Title     string   `json:"title"`
+	Navigated bool     `json:"navigated"`
+	Dialogs   []string `json:"dialogs"`
+}
+
+// Click clicks el with the mouse.
+func (a *Agent) Click(el Element) After {
+	a.t.Helper()
+	return a.interact(el, "click", "", "")
+}
+
+// TryClick is Click for a click expected to fail; it returns the failure.
+func (a *Agent) TryClick(el Element) error {
+	a.t.Helper()
+	return a.try("interact", interactArgs(el, "click", "", ""))
+}
+
+// Type types text into el in place of its content.
+func (a *Agent) Type(el Element, text string) After {
+	a.t.Helper()
+	return a.interact(el, "type", "text", text)
+}
+
+// Press presses key, such as Enter or Control+a, on the focused element.
+func (a *Agent) Press(key string) After {
+	a.t.Helper()
+	return a.interact(Element{}, "press", "key", key)
+}
+
+// Select picks the option of el with value or label option.
+func (a *Agent) Select(el Element, option string) After {
+	a.t.Helper()
+	return a.interact(el, "select", "option", option)
+}
+
+func (a *Agent) interact(el Element, action, arg, value string) After {
+	a.t.Helper()
+	var after After
+	a.call("interact", interactArgs(el, action, arg, value), &after)
+	return after
+}
+
+func interactArgs(el Element, action, arg, value string) map[string]any {
+	args := map[string]any{"action": action}
+	if el.Ref != "" {
+		args["ref"] = el.Ref
+	}
+	if el.Selector != "" {
+		args["selector"] = el.Selector
+	}
+	if arg != "" {
+		args[arg] = value
+	}
+	return args
+}

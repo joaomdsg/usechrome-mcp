@@ -83,6 +83,7 @@ func (b *Browser) start() error {
 		stopAlloc()
 		return fmt.Errorf("start browser: %w", err)
 	}
+	acceptDialogs(tctx)
 	b.stop, b.first = stopAlloc, tctx
 	b.tabs = map[string]*tab{}
 	b.addTab(tctx, cancel)
