@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -86,29 +85,20 @@ func renderConsole(msgs []browser.ConsoleMessage, level string, limit int) strin
 	for i, m := range msgs {
 		blocks[i] = messageBlock(m)
 	}
-	first, size := len(blocks), 0
-	for first > 0 && size+len(blocks[first-1])+noticeRoom <= limit {
-		first--
-		size += len(blocks[first])
-	}
+	kept, cut := newest(blocks, limit)
 	var b strings.Builder
-	if first > 0 {
-		fmt.Fprintf(&b, "... %d earlier messages cut; pass level to see fewer\n", first)
+	if cut > 0 {
+		fmt.Fprintf(&b, "... %d earlier messages cut; pass level to see fewer\n", cut)
 	}
-	for _, block := range blocks[first:] {
+	for _, block := range kept {
 		b.WriteString(block)
 	}
 	return b.String()
 }
 
 func messageBlock(m browser.ConsoleMessage) string {
-	text := m.Text
-	if len(text) > maxMessageChars {
-		kept := strings.ToValidUTF8(text[:maxMessageChars], "")
-		text = kept + fmt.Sprintf(" ... %d more characters", utf8.RuneCountInString(text[len(kept):]))
-	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s: %s\n", m.Type, text)
+	fmt.Fprintf(&b, "%s: %s\n", m.Type, cutText(m.Text, maxMessageChars))
 	at := m.Stack
 	if len(at) == 0 && m.Source != "" {
 		at = []string{m.Source}

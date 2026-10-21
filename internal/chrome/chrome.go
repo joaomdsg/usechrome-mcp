@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/chromedp/remote"
 )
@@ -48,6 +49,7 @@ type tab struct {
 	id     string
 	ctx    context.Context
 	cancel context.CancelFunc
+	net    *netLog
 }
 
 // New returns a Browser that starts on its first operation and lives until
@@ -109,16 +111,25 @@ func (b *Browser) allocator() (context.Context, context.CancelFunc) {
 
 func (b *Browser) addTab(ctx context.Context, cancel context.CancelFunc) *tab {
 	b.seq++
-	t := &tab{id: fmt.Sprintf("t%d", b.seq), ctx: ctx, cancel: cancel}
+	t := &tab{id: fmt.Sprintf("t%d", b.seq), ctx: ctx, cancel: cancel, net: newNetLog()}
+	follow(ctx, network.RequestWillBeSent, t.net.sent)
+	follow(ctx, network.ResponseReceived, t.net.received)
+	follow(ctx, network.LoadingFinished, t.net.finished)
+	follow(ctx, network.LoadingFailed, t.net.failed)
 	b.tabs[t.id] = t
 	b.current = t.id
 	return t
 }
 
 // do runs fn against a tab, bounded by both the request context and the
-// operation timeout. chromedp needs the tab's own context, so the request
-// context can only cancel it, not replace it.
+// operation timeout.
 func (b *Browser) do(ctx context.Context, tabID string, fn func(context.Context) error) error {
+	return b.doTab(ctx, tabID, func(tctx context.Context, _ *tab) error { return fn(tctx) })
+}
+
+// doTab is do for an fn that needs the tab itself. chromedp needs the tab's
+// own context, so the request context can only cancel it, not replace it.
+func (b *Browser) doTab(ctx context.Context, tabID string, fn func(context.Context, *tab) error) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if err := b.start(); err != nil {
@@ -134,7 +145,7 @@ func (b *Browser) do(ctx context.Context, tabID string, fn func(context.Context)
 	octx, cancel := context.WithTimeout(t.ctx, b.opts.Timeout)
 	defer cancel()
 	defer context.AfterFunc(ctx, cancel)()
-	err := fn(octx)
+	err := fn(octx, t)
 	if errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil {
 		return fmt.Errorf("timed out after %s: %w", b.opts.Timeout, err)
 	}

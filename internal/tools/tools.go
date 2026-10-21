@@ -2,6 +2,10 @@
 package tools
 
 import (
+	"fmt"
+	"strings"
+	"unicode/utf8"
+
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -32,4 +36,25 @@ func inputSchema[T any]() *jsonschema.Schema {
 
 func textResult(text string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}
+}
+
+// cutText keeps the first limit bytes of text, ending on a whole character,
+// and says how many characters it cut.
+func cutText(text string, limit int) string {
+	if len(text) <= limit {
+		return text
+	}
+	kept := strings.ToValidUTF8(text[:limit], "")
+	return kept + fmt.Sprintf(" ... %d more characters", utf8.RuneCountInString(text[len(kept):]))
+}
+
+// newest keeps the last blocks that fit in limit with room for a notice,
+// and returns how many it cut.
+func newest(blocks []string, limit int) ([]string, int) {
+	first, size := len(blocks), 0
+	for first > 0 && size+len(blocks[first-1])+noticeRoom <= limit {
+		first--
+		size += len(blocks[first])
+	}
+	return blocks[first:], first
 }

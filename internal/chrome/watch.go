@@ -43,17 +43,11 @@ func watchPage(ctx context.Context) (*pageWatch, error) {
 		sameDoc:   signal(wctx, page.NavigatedWithinDocument, func(e page.EventNavigatedWithinDocument) bool { return e.FrameID == main }),
 		stopped:   signal(wctx, page.FrameStoppedLoading, func(e page.EventFrameStoppedLoading) bool { return e.FrameID == main }),
 	}
-	dialogs := chromedp.Events(wctx, page.JavascriptDialogOpening)
-	go func() {
-		for e, err := range dialogs {
-			if err != nil {
-				return
-			}
-			w.mu.Lock()
-			w.dialogs = append(w.dialogs, fmt.Sprintf("%s: %s", e.Type, e.Message))
-			w.mu.Unlock()
-		}
-	}()
+	follow(wctx, page.JavascriptDialogOpening, func(e page.EventJavascriptDialogOpening) {
+		w.mu.Lock()
+		w.dialogs = append(w.dialogs, fmt.Sprintf("%s: %s", e.Type, e.Message))
+		w.mu.Unlock()
+	})
 	return w, nil
 }
 
@@ -106,6 +100,20 @@ func signal[E any](ctx context.Context, ev cdp.Event[E], match func(E) bool) <-c
 	return ch
 }
 
+// follow subscribes to ev at once and calls fn with each event until ctx
+// ends.
+func follow[E any](ctx context.Context, ev cdp.Event[E], fn func(E)) {
+	events := chromedp.Events(ctx, ev)
+	go func() {
+		for e, err := range events {
+			if err != nil {
+				return
+			}
+			fn(e)
+		}
+	}()
+}
+
 func fired(ch <-chan struct{}) bool {
 	select {
 	case <-ch:
@@ -119,13 +127,7 @@ func fired(ch <-chan struct{}) bool {
 // clicking OK would, because an open dialog blocks the page and every call
 // that waits on it.
 func acceptDialogs(ctx context.Context) {
-	dialogs := chromedp.Events(ctx, page.JavascriptDialogOpening)
-	go func() {
-		for e, err := range dialogs {
-			if err != nil {
-				return
-			}
-			_, _ = chromedp.Call(ctx, page.HandleJavaScriptDialog, page.HandleJavaScriptDialogParams{Accept: true, PromptText: e.DefaultPrompt})
-		}
-	}()
+	follow(ctx, page.JavascriptDialogOpening, func(e page.EventJavascriptDialogOpening) {
+		_, _ = chromedp.Call(ctx, page.HandleJavaScriptDialog, page.HandleJavaScriptDialogParams{Accept: true, PromptText: e.DefaultPrompt})
+	})
 }
