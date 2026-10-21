@@ -1,6 +1,11 @@
 # Gate for the commit stage's unit tests. The acceptance harness is excluded
 # because the acceptance stage exercises it, not unit tests.
 profile: cover.out
+# Google's guidance calls 75% commendable and 90% exemplary
+# (testing.googleblog.com/2020/08/code-coverage-best-practices.html); the
+# total sits between them. A package may drop to 70 so that wiring only the
+# acceptance stage can reach, as in main, is not covered by tests written for
+# the number.
 threshold:
   package: 70
   total: 80
