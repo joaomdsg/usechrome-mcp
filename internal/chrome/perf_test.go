@@ -91,12 +91,14 @@ func TestPerfFindsWhatTheShiftMoved(t *testing.T) {
 }
 
 // clickSlow clicks the slow button of a fresh perfPage at url and waits
-// until the browser has reported the click.
+// until the browser has reported the click. It waits for the page's layout
+// shift first: the shift moves the button down, and a press that lands after
+// the button was found but before it moved misses it.
 func clickSlow(t *testing.T, url string) browser.Perf {
 	t.Helper()
 	b := newBrowser(t)
 	nav(t, b, browser.NavRequest{URL: url})
-	if p := waitPerf(t, b, func(browser.Perf) bool { return true }); p.InteractionCount != 0 || len(p.Interactions) != 0 {
+	if p := waitPerf(t, b, func(p browser.Perf) bool { return len(p.Shifts) > 0 }); p.InteractionCount != 0 || len(p.Interactions) != 0 {
 		t.Fatalf("before any input: %d interactions, kept %+v; want none", p.InteractionCount, p.Interactions)
 	}
 	if _, err := b.Interact(t.Context(), browser.InteractRequest{Action: browser.Click, Selector: "#slow"}); err != nil {
