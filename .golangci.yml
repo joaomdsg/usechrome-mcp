@@ -1,0 +1,91 @@
+version: "2"
+
+run:
+  build-tags: [acceptance]
+
+linters:
+  default: standard
+  enable:
+    - cyclop
+    - depguard
+    - dupl
+    - funlen
+    - gocognit
+    - gosec
+    - maintidx
+    - nestif
+    - revive
+  settings:
+    cyclop:
+      max-complexity: 10
+    dupl:
+      threshold: 150
+    funlen:
+      lines: 60
+      statements: 40
+      ignore-comments: true
+    gocognit:
+      min-complexity: 15
+    maintidx:
+      under: 20
+    nestif:
+      min-complexity: 5
+    revive:
+      enable-default-rules: false
+      severity: error
+      rules:
+        - name: exported
+        - name: package-comments
+    # The architecture: tools speak MCP and see the browser only through the
+    # stdlib-only types in internal/browser; the chromedp adapter knows
+    # nothing of MCP; only main wires the adapter to the server. Acceptance
+    # tests reach the binary only through the DSL and its stdio driver.
+    depguard:
+      rules:
+        browser:
+          list-mode: strict
+          files: ["**/internal/browser/**"]
+          allow: [$gostd]
+        chrome:
+          files: ["**/internal/chrome/**"]
+          deny:
+            - pkg: github.com/modelcontextprotocol/go-sdk
+              desc: the browser adapter must not know about MCP
+            - pkg: github.com/joaomdsg/usechrome-mcp/internal/tools
+              desc: the browser adapter must not know about MCP tools
+            - pkg: github.com/joaomdsg/usechrome-mcp/internal/server
+              desc: the browser adapter must not know about the MCP server
+        tools:
+          files: ["**/internal/tools/**"]
+          deny:
+            - pkg: github.com/chromedp
+              desc: tools see the browser only through internal/browser
+            - pkg: github.com/joaomdsg/usechrome-mcp/internal/chrome
+              desc: tools see the browser only through internal/browser
+        server:
+          files: ["**/internal/server/**"]
+          deny:
+            - pkg: github.com/chromedp
+              desc: main wires the browser adapter in
+            - pkg: github.com/joaomdsg/usechrome-mcp/internal/chrome
+              desc: main wires the browser adapter in
+        acceptance:
+          files: ["**/acceptance/*.go", "**/acceptance/dsl/**"]
+          deny:
+            - pkg: github.com/modelcontextprotocol/go-sdk
+              desc: only acceptance/driver speaks MCP
+            - pkg: github.com/joaomdsg/usechrome-mcp/internal
+              desc: acceptance tests treat the binary as a black box
+        driver:
+          files: ["**/acceptance/driver/**"]
+          deny:
+            - pkg: github.com/joaomdsg/usechrome-mcp/internal
+              desc: acceptance tests treat the binary as a black box
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes: [github.com/joaomdsg/usechrome-mcp]

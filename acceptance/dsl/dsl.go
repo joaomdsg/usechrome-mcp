@@ -40,7 +40,7 @@ func serverBinary() (string, func(), error) {
 	}
 	cleanup := func() { _ = os.RemoveAll(dir) }
 	bin := filepath.Join(dir, "usechrome-mcp")
-	cmd := exec.Command("go", "build", "-o", bin, mainPkg)
+	cmd := exec.Command("go", "build", "-o", bin, mainPkg) //nolint:gosec // G204: bin is a path in our own temp dir
 	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
 	if err := cmd.Run(); err != nil {
 		cleanup()

@@ -1,0 +1,90 @@
+# The deployment pipeline. Every change goes through it, and it is the only
+# gate: the commit stage gives feedback in under five minutes, then the
+# acceptance stage tests the very binary the commit stage built.
+name: pipeline
+
+on:
+  push:
+    branches: [main, "ci/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: commit / test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            devtools/*/go.sum
+      - run: make build tidy vet test coverage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: usechrome-mcp
+          path: dist/usechrome-mcp
+          if-no-files-found: error
+          retention-days: 7
+
+  lint:
+    name: commit / lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            devtools/*/go.sum
+      - run: make lint
+
+  audit:
+    name: commit / audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            devtools/*/go.sum
+      - run: make vuln secrets workflows
+      - name: commit messages
+        # Only the commits main does not have yet; before main exists, all.
+        run: |
+          range=HEAD
+          if git rev-parse -q --verify origin/main >/dev/null; then range=origin/main..HEAD; fi
+          make commit-messages COMMITS="$range"
+
+  acceptance:
+    name: acceptance
+    needs: [test, lint, audit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: usechrome-mcp
+          path: dist
+      # Artifacts lose the executable bit in transit.
+      - run: chmod +x dist/usechrome-mcp && make acceptance
