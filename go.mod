@@ -1,6 +1,6 @@
 module github.com/joaomdsg/usechrome-mcp
 
-go 1.26
+go 1.26.10
 
 require (
 	github.com/chromedp/cdproto v0.157.8

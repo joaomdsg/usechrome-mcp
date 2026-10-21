@@ -30,7 +30,7 @@ Protocol, so it needs no Node.js, no WebDriver and no browser extension.
 
 ## Install
 
-With Go 1.26 or newer:
+With Go 1.26.10 or newer:
 
 ```sh
 go install github.com/joaomdsg/usechrome-mcp/cmd/usechrome-mcp@latest
@@ -270,7 +270,7 @@ acceptance tests cannot import the code they test.
 
 ## Develop
 
-You need Go 1.26 and Chrome or Chromium. The Makefile runs the same checks, with
+You need Go 1.26.10 and Chrome or Chromium. The Makefile runs the same checks, with
 the same pinned tool versions, as the pipeline:
 
 ```sh
