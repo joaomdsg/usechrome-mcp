@@ -5,7 +5,7 @@ tool = go tool -modfile=devtools/$(1)/go.mod $(1)
 BIN := dist/usechrome-mcp
 COMMITS ?= origin/main..HEAD
 
-.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows commit-messages acceptance
+.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows commit-messages acceptance readme
 
 commit-stage: build tidy vet test coverage lint vuln secrets workflows
 
@@ -44,3 +44,6 @@ commit-messages:
 
 acceptance:
 	USECHROME_MCP_BIN=$(CURDIR)/$(BIN) go test -tags acceptance -count=1 -timeout 5m ./acceptance/...
+
+readme:
+	go test ./cmd/usechrome-mcp -run TestReadme -count=1 -update
