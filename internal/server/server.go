@@ -19,6 +19,7 @@ type Browser interface {
 	tools.Snapshotter
 	tools.Interacter
 	tools.Styler
+	tools.Consoler
 }
 
 // New returns an MCP server that reports the given version and whose tools
@@ -32,5 +33,6 @@ func New(version string, b Browser) *mcp.Server {
 	tools.AddSnapshot(s, b)
 	tools.AddInteract(s, b)
 	tools.AddStyles(s, b)
+	tools.AddConsole(s, b)
 	return s
 }

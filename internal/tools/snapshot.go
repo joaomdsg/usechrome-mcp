@@ -10,11 +10,6 @@ import (
 	"github.com/joaomdsg/usechrome-mcp/internal/browser"
 )
 
-// maxSnapshotChars keeps a snapshot near 10,000 tokens, where Claude Code
-// starts warning: "Claude Code displays a warning when MCP tool output
-// exceeds 10,000 tokens" (code.claude.com/docs/en/mcp).
-const maxSnapshotChars = 40_000
-
 // Snapshotter reads a tab's accessibility tree.
 type Snapshotter interface {
 	Snapshot(ctx context.Context, req browser.SnapshotRequest) (browser.Snapshot, error)
@@ -40,7 +35,7 @@ func AddSnapshot(s *mcp.Server, sn Snapshotter) {
 		if err != nil {
 			return nil, nil, err
 		}
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: renderSnapshot(snap, maxSnapshotChars)}}}, nil, nil
+		return textResult(renderSnapshot(snap, maxTextChars)), nil, nil
 	})
 }
 
@@ -49,7 +44,6 @@ func AddSnapshot(s *mcp.Server, sn Snapshotter) {
 func renderSnapshot(snap browser.Snapshot, limit int) string {
 	lines := []string{"url: " + snap.URL, "title: " + snap.Title}
 	lines = appendNodes(lines, snap.Nodes, 0)
-	const noticeRoom = 100
 	var b strings.Builder
 	for i, line := range lines {
 		if b.Len()+len(line)+1+noticeRoom > limit {
