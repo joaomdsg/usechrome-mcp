@@ -14,7 +14,7 @@ updates:
       go:
         patterns: ["*"]
     # GoReleaser 2.18 needs Go 1.27, and setup-go runs only the Go that go.mod
-    # names (1.26); one failing bump would hold back the whole group.
+    # names (1.26.10); one failing bump would hold back the whole group.
     ignore:
       - dependency-name: github.com/goreleaser/goreleaser/v2
         versions: [">= 2.18.0"]
