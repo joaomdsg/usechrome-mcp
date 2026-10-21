@@ -23,6 +23,7 @@ type Browser interface {
 	tools.Networker
 	tools.Sourcer
 	tools.Perfer
+	tools.Tabser
 }
 
 // New returns an MCP server that reports the given version and whose tools
@@ -40,5 +41,6 @@ func New(version string, b Browser) *mcp.Server {
 	tools.AddNetwork(s, b)
 	tools.AddSource(s, b)
 	tools.AddPerf(s, b)
+	tools.AddTabs(s, b)
 	return s
 }
