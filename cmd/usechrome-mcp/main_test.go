@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"runtime/debug"
 	"testing"
 	"time"
 
@@ -19,6 +20,21 @@ func TestVersionFlagPrintsVersion(t *testing.T) {
 	}
 	if got := stdout.String(); got != version+"\n" {
 		t.Fatalf("stdout = %q, want %q", got, version+"\n")
+	}
+}
+
+func TestGoInstallReportsTheModuleVersion(t *testing.T) {
+	for _, tc := range []struct {
+		ldflags, module, want string
+	}{
+		{"dev", "v0.1.0", "v0.1.0"},
+		{"v0.2.0", "v0.1.0", "v0.2.0"},
+		{"dev", "(devel)", "dev"},
+		{"dev", "", "dev"},
+	} {
+		if got := moduleVersion(tc.ldflags, &debug.BuildInfo{Main: debug.Module{Version: tc.module}}); got != tc.want {
+			t.Errorf("version %q with module version %q = %q, want %q", tc.ldflags, tc.module, got, tc.want)
+		}
 	}
 }
 

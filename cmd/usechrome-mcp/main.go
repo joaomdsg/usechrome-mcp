@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -27,10 +28,22 @@ type config struct {
 }
 
 func main() {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		version = moduleVersion(version, info)
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	code := run(ctx, os.Args[1:], &mcp.StdioTransport{}, os.Stdout, os.Stderr)
 	stop()
 	os.Exit(code)
+}
+
+// moduleVersion gives a binary that go install built the version of its
+// module, since only release builds set v.
+func moduleVersion(v string, info *debug.BuildInfo) string {
+	if v != "dev" || info.Main.Version == "" || info.Main.Version == "(devel)" {
+		return v
+	}
+	return info.Main.Version
 }
 
 func run(ctx context.Context, args []string, transport mcp.Transport, stdout, stderr io.Writer) int {
