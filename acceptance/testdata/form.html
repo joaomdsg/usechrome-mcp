@@ -7,12 +7,23 @@
 <body>
 <main>
 <h1>Sign up</h1>
-<form>
+<form id="signup">
 <label>Email <input id="email" type="email" placeholder="you@example.com"></label>
+<label>Plan <select id="plan"><option value="free">Free</option><option value="pro">Pro</option></select></label>
 <label><input id="agree" type="checkbox"> Agree</label>
 <button id="send">Send</button>
 </form>
+<p id="status" role="status"></p>
 <div hidden><button>Secret</button></div>
 </main>
+<script>
+document.getElementById("signup").addEventListener("submit", e => {
+  e.preventDefault();
+  const plan = document.getElementById("plan").selectedOptions[0].label;
+  document.getElementById("status").textContent = document.getElementById("agree").checked
+    ? `Thanks, ${document.getElementById("email").value}, on the ${plan} plan`
+    : "Please agree first";
+});
+</script>
 </body>
 </html>
