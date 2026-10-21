@@ -30,6 +30,10 @@ func (noBrowser) Screenshot(context.Context, browser.ScreenshotRequest) (browser
 	return browser.Image{}, errors.New("no browser")
 }
 
+func (noBrowser) Snapshot(context.Context, browser.SnapshotRequest) (browser.Snapshot, error) {
+	return browser.Snapshot{}, errors.New("no browser")
+}
+
 func connect(t *testing.T) *mcp.ClientSession {
 	t.Helper()
 	serverT, clientT := mcp.NewInMemoryTransports()
@@ -65,7 +69,7 @@ func TestServerListsEveryTool(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"eval", "navigate", "screenshot", "viewport"}; !slices.Equal(names, want) {
+	if want := []string{"eval", "navigate", "screenshot", "snapshot", "viewport"}; !slices.Equal(names, want) {
 		t.Errorf("tools = %v, want %v", names, want)
 	}
 }

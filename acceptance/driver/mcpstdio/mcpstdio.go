@@ -46,27 +46,37 @@ type Image struct {
 	Data     []byte
 }
 
-// Call invokes a tool, decodes its structured result into out and returns
-// the images it carries. An error result comes back as a *ToolError.
-func (c *Client) Call(ctx context.Context, tool string, args, out any) ([]Image, error) {
+// Reply is what a tool returned besides its structured result.
+type Reply struct {
+	Text   string
+	Images []Image
+}
+
+// Call invokes a tool, decodes its structured result into out unless out is
+// nil, and returns its text and images. An error result comes back as a
+// *ToolError.
+func (c *Client) Call(ctx context.Context, tool string, args, out any) (Reply, error) {
 	res, err := c.session.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", tool, err)
+		return Reply{}, fmt.Errorf("%s: %w", tool, err)
 	}
 	if res.IsError {
-		return nil, &ToolError{Tool: tool, Text: text(res.Content)}
+		return Reply{}, &ToolError{Tool: tool, Text: text(res.Content)}
+	}
+	reply := Reply{Text: text(res.Content)}
+	for _, c := range res.Content {
+		if ic, ok := c.(*mcp.ImageContent); ok {
+			reply.Images = append(reply.Images, Image{MIMEType: ic.MIMEType, Data: ic.Data})
+		}
+	}
+	if out == nil {
+		return reply, nil
 	}
 	b, err := json.Marshal(res.StructuredContent)
 	if err != nil {
-		return nil, err
+		return Reply{}, err
 	}
-	var images []Image
-	for _, c := range res.Content {
-		if ic, ok := c.(*mcp.ImageContent); ok {
-			images = append(images, Image{MIMEType: ic.MIMEType, Data: ic.Data})
-		}
-	}
-	return images, json.Unmarshal(b, out)
+	return reply, json.Unmarshal(b, out)
 }
 
 // Close closes the server's stdin and waits for the process to exit.
