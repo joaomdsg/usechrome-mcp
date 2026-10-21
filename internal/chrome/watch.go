@@ -3,11 +3,13 @@ package chrome
 import (
 	"context"
 	"fmt"
+	"iter"
 	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
 )
 
@@ -26,6 +28,8 @@ type pageWatch struct {
 
 	mu      sync.Mutex
 	dialogs []string
+	windows []string
+	created []target.ID
 }
 
 // watchPage starts recording before the action, so that no event is lost.
@@ -47,6 +51,19 @@ func watchPage(ctx context.Context) (*pageWatch, error) {
 		w.mu.Lock()
 		w.dialogs = append(w.dialogs, fmt.Sprintf("%s: %s", e.Type, e.Message))
 		w.mu.Unlock()
+	})
+	follow(wctx, page.WindowOpen, func(e page.EventWindowOpen) {
+		w.mu.Lock()
+		w.windows = append(w.windows, e.URL)
+		w.mu.Unlock()
+	})
+	opener := chromedp.FromContext(ctx).Target.TargetID
+	followBrowser(wctx, target.TargetCreated, func(e target.EventTargetCreated) {
+		if e.TargetInfo.OpenerID == opener && e.TargetInfo.Type == "page" {
+			w.mu.Lock()
+			w.created = append(w.created, e.TargetInfo.TargetID)
+			w.mu.Unlock()
+		}
 	})
 	return w, nil
 }
@@ -81,6 +98,15 @@ func (w *pageWatch) opened() []string {
 	return w.dialogs
 }
 
+// popups returns the tabs the page opened and the URL it asked each to
+// load. The browser creates a tab before it knows the URL, so the two come
+// from separate events, which it sends in the same order.
+func (w *pageWatch) popups() ([]target.ID, []string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.created, w.windows
+}
+
 // signal subscribes to ev at once and returns a channel that closes on the
 // first event match accepts.
 func signal[E any](ctx context.Context, ev cdp.Event[E], match func(E) bool) <-chan struct{} {
@@ -103,7 +129,15 @@ func signal[E any](ctx context.Context, ev cdp.Event[E], match func(E) bool) <-c
 // follow subscribes to ev at once and calls fn with each event until ctx
 // ends.
 func follow[E any](ctx context.Context, ev cdp.Event[E], fn func(E)) {
-	events := chromedp.Events(ctx, ev)
+	each(chromedp.Events(ctx, ev), fn)
+}
+
+// followBrowser is follow for the events of the browser.
+func followBrowser[E any](ctx context.Context, ev cdp.Event[E], fn func(E)) {
+	each(chromedp.BrowserEvents(ctx, ev), fn)
+}
+
+func each[E any](events iter.Seq2[E, error], fn func(E)) {
 	go func() {
 		for e, err := range events {
 			if err != nil {

@@ -20,7 +20,8 @@ func tabSite(t *testing.T) string {
 	}
 	mux.HandleFunc("/{$}", page("<!doctype html><title>Home</title>"))
 	mux.HandleFunc("/second", page("<!doctype html><title>Second</title>"))
-	mux.HandleFunc("/opener", page(`<!doctype html><title>Opener</title><a id="pop" href="/second" target="_blank">pop</a>`))
+	mux.HandleFunc("/opener", page(`<!doctype html><title>Opener</title><a id="pop" href="/second" target="_blank">pop</a>`+
+		`<button id="two" onclick="window.open('/'); window.open('/second')">two</button>`))
 	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -153,11 +154,11 @@ func TestTabsAdoptsATabThePageOpenedAndForgetsItOnceClosed(t *testing.T) {
 	t.Parallel()
 	b := newBrowser(t)
 	nav(t, b, browser.NavRequest{URL: tabSite(t) + "/opener"})
-	if _, err := b.Interact(t.Context(), browser.InteractRequest{Action: browser.Click, Selector: "#pop"}); err != nil {
+	if _, err := b.Eval(t.Context(), browser.EvalRequest{Expression: "open('/second'), 0"}); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := waitTabs(t, b, []string{"*t1 Opener", "t2 Second"}), []string{"*t1 Opener", "t2 Second"}; !slices.Equal(got, want) {
-		t.Fatalf("tabs after a target=_blank click = %q, want %q", got, want)
+		t.Fatalf("tabs after the page opened one = %q, want %q", got, want)
 	}
 	tabs(t, b, browser.TabsRequest{Action: browser.SelectTab, Tab: "t2"})
 	if got := title(t, b, ""); got != "Second" {
@@ -168,6 +169,28 @@ func TestTabsAdoptsATabThePageOpenedAndForgetsItOnceClosed(t *testing.T) {
 	}
 	if got, want := waitTabs(t, b, []string{"*t1 Opener"}), []string{"*t1 Opener"}; !slices.Equal(got, want) {
 		t.Errorf("tabs after the page closed itself = %q, want %q", got, want)
+	}
+}
+
+func TestInteractReportsTheTabsItsActionOpened(t *testing.T) {
+	t.Parallel()
+	b := newBrowser(t)
+	site := tabSite(t)
+	nav(t, b, browser.NavRequest{URL: site + "/opener"})
+	for _, tc := range []struct {
+		selector string
+		want     []browser.Tab
+	}{
+		{"#pop", []browser.Tab{{ID: "t2", URL: site + "/second"}}},
+		{"#two", []browser.Tab{{ID: "t3", URL: site + "/"}, {ID: "t4", URL: site + "/second"}}},
+	} {
+		r, err := b.Interact(t.Context(), browser.InteractRequest{Action: browser.Click, Selector: tc.selector})
+		if err != nil || !slices.Equal(r.Opened, tc.want) {
+			t.Errorf("click on %s opened %+v, %v; want %+v", tc.selector, r.Opened, err, tc.want)
+		}
+	}
+	if got, want := waitTabs(t, b, []string{"*t1 Opener", "t2 Second", "t3 Home", "t4 Second"}), []string{"*t1 Opener", "t2 Second", "t3 Home", "t4 Second"}; !slices.Equal(got, want) {
+		t.Errorf("tabs after the clicks = %q, want %q", got, want)
 	}
 }
 

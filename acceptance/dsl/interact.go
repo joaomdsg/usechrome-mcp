@@ -18,6 +18,13 @@ type After struct {
 	Title     string   `json:"title"`
 	Navigated bool     `json:"navigated"`
 	Dialogs   []string `json:"dialogs"`
+	Opened    []Opened `json:"opened"`
+}
+
+// Opened is a tab an action opened.
+type Opened struct {
+	Tab string `json:"tab"`
+	URL string `json:"url"`
 }
 
 // Click clicks el with the mouse.

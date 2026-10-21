@@ -71,7 +71,7 @@ func (b *Browser) sync(ctx context.Context) error {
 	for _, i := range open {
 		if !known[i.TargetID] && !b.closed[i.TargetID] {
 			// A tab can close before the attach; the next listing settles it.
-			_ = b.adopt(ctx, i.TargetID)
+			_, _ = b.adopt(ctx, i.TargetID)
 		}
 	}
 	return nil
@@ -102,13 +102,31 @@ func (b *Browser) newest() string {
 	return last.id
 }
 
-func (b *Browser) adopt(ctx context.Context, id target.ID) error {
+func (b *Browser) adopt(ctx context.Context, id target.ID) (*tab, error) {
 	tctx, cancel := chromedp.NewContext(b.first, chromedp.WithTargetID(id))
 	if err := attach(ctx, tctx, cancel); err != nil {
-		return err
+		return nil, err
 	}
-	b.addTab(tctx, cancel)
-	return nil
+	return b.addTab(tctx, cancel), nil
+}
+
+// adoptOpened adopts the tabs an action opened, so that the agent can
+// select them by id. A tab that closed at once is left out.
+func (b *Browser) adoptOpened(ctx context.Context, w *pageWatch) []browser.Tab {
+	ids, urls := w.popups()
+	var out []browser.Tab
+	for i, id := range ids {
+		t, err := b.adopt(ctx, id)
+		if err != nil {
+			continue
+		}
+		opened := browser.Tab{ID: t.id}
+		if i < len(urls) {
+			opened.URL = urls[i]
+		}
+		out = append(out, opened)
+	}
+	return out
 }
 
 // attach runs tctx's first action, which attaches it to its tab, within

@@ -128,18 +128,11 @@ func (b *Browser) addTab(ctx context.Context, cancel context.CancelFunc) *tab {
 	}
 	alive, gone := context.WithCancelCause(ctx)
 	t.alive = alive
-	closed := chromedp.BrowserEvents(alive, target.TargetDestroyed)
-	go func() {
-		for e, err := range closed {
-			if err != nil {
-				return
-			}
-			if e.TargetID == t.target {
-				gone(fmt.Errorf("tab %s closed; the tabs tool lists the open ones", t.id))
-				return
-			}
+	followBrowser(alive, target.TargetDestroyed, func(e target.EventTargetDestroyed) {
+		if e.TargetID == t.target {
+			gone(fmt.Errorf("tab %s closed; the tabs tool lists the open ones", t.id))
 		}
-	}()
+	})
 	acceptDialogs(ctx)
 	follow(ctx, network.RequestWillBeSent, t.net.sent)
 	follow(ctx, network.ResponseReceived, t.net.received)

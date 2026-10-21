@@ -28,7 +28,7 @@ func (b *Browser) Interact(ctx context.Context, req browser.InteractRequest) (br
 			return err
 		}
 		d, err := readDocument(tctx)
-		out = browser.Interaction{URL: d.URL, Title: d.Title, Navigated: w.navigated(), Dialogs: w.opened()}
+		out = browser.Interaction{URL: d.URL, Title: d.Title, Navigated: w.navigated(), Dialogs: w.opened(), Opened: b.adoptOpened(tctx, w)}
 		return err
 	})
 	return out, err
