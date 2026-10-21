@@ -11,7 +11,7 @@ VERSION ?= dev
 IMAGE ?= usechrome-mcp:acceptance
 PLATFORM := linux/$(shell go env GOARCH)
 
-.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows release-check release commit-messages acceptance acceptance-image readme
+.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows release-check release commit-messages squash-message acceptance acceptance-image readme
 
 commit-stage: build tidy vet test coverage lint vuln secrets workflows release-check
 
