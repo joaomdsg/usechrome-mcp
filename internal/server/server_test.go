@@ -22,6 +22,10 @@ func (noBrowser) Eval(context.Context, browser.EvalRequest) (browser.EvalResult,
 	return browser.EvalResult{}, errors.New("no browser")
 }
 
+func (noBrowser) Viewport(context.Context, browser.ViewportRequest) (browser.Viewport, error) {
+	return browser.Viewport{}, errors.New("no browser")
+}
+
 func connect(t *testing.T) *mcp.ClientSession {
 	t.Helper()
 	serverT, clientT := mcp.NewInMemoryTransports()
@@ -57,7 +61,7 @@ func TestServerListsEveryTool(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"eval", "navigate"}; !slices.Equal(names, want) {
+	if want := []string{"eval", "navigate", "viewport"}; !slices.Equal(names, want) {
 		t.Errorf("tools = %v, want %v", names, want)
 	}
 }

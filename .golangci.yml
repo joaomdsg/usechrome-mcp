@@ -45,7 +45,8 @@ linters:
         browser:
           list-mode: strict
           files: ["**/internal/browser/**"]
-          allow: [$gostd]
+          # Itself too, for its external tests.
+          allow: [$gostd, github.com/joaomdsg/usechrome-mcp/internal/browser]
         chrome:
           files: ["**/internal/chrome/**"]
           deny:
