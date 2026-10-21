@@ -15,20 +15,32 @@ linters:
     - maintidx
     - nestif
     - revive
+  # Each limit is a published default, so a reader can check where it came
+  # from rather than take a number on trust.
   settings:
     cyclop:
+      # cyclop's default (github.com/bkielbasa/cyclop).
       max-complexity: 10
     dupl:
+      # golangci-lint's default (golangci-lint.run/docs/linters/configuration).
       threshold: 150
     funlen:
+      # funlen's defaults (github.com/ultraware/funlen).
       lines: 60
       statements: 40
       ignore-comments: true
     gocognit:
+      # SonarSource's default for cognitive complexity, the metric's origin
+      # (community.sonarsource.com/t/127103), and inside the 10-20 that
+      # golangci-lint recommends.
       min-complexity: 15
     maintidx:
+      # maintidx's default, and the floor of the band Visual Studio rates as
+      # good maintainability (learn.microsoft.com/visualstudio/code-quality/
+      # code-metrics-maintainability-index-range-and-meaning).
       under: 20
     nestif:
+      # golangci-lint's default (golangci-lint.run/docs/linters/configuration).
       min-complexity: 5
     revive:
       enable-default-rules: false
