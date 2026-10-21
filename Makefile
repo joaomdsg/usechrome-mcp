@@ -61,7 +61,7 @@ squash-message:
 	scripts/check-commit-messages.sh -m "$$PR_TITLE"
 
 acceptance:
-	USECHROME_MCP_BIN=$(CURDIR)/$(BIN) go test -tags acceptance -count=1 -timeout 5m ./acceptance/...
+	USECHROME_MCP_BIN=$(CURDIR)/$(BIN) go test -tags acceptance -count=1 -timeout 5m -v ./acceptance/...
 
 # Builds the release image around $(BIN), in the context layout GoReleaser
 # uses, and runs the acceptance tests against it.
@@ -70,7 +70,7 @@ acceptance-image:
 	mkdir -p dist/image/$(PLATFORM)
 	cp $(BIN) dist/image/$(PLATFORM)/
 	docker build --platform $(PLATFORM) -t $(IMAGE) -f Dockerfile dist/image
-	USECHROME_MCP_BIN=$(CURDIR)/scripts/run-image.sh USECHROME_MCP_IMAGE=$(IMAGE) go test -tags acceptance -count=1 -timeout 5m ./acceptance/...
+	USECHROME_MCP_BIN=$(CURDIR)/scripts/run-image.sh USECHROME_MCP_IMAGE=$(IMAGE) go test -tags acceptance -count=1 -timeout 5m -v ./acceptance/...
 
 readme:
 	go test ./cmd/usechrome-mcp -run TestReadme -count=1 -update
