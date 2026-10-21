@@ -242,11 +242,13 @@ ruleset on `main` requires the five commit and acceptance jobs to pass on a
 branch that is up to date with `main`, takes no approvals, and keeps history
 linear. Pull requests are opened with auto-merge, so they merge themselves once
 the jobs pass: rebased, so each small commit lands as it was written.
-Dependabot's weekly pull request, one for Go modules, actions and the base
-image together ([config](.github/dependabot.yml)), is squashed into a single
-commit titled as the pull request
-([workflow](.github/workflows/dependabot.yml)). When another merge
-leaves it behind `main`, a `@dependabot rebase` comment brings it up to date.
+Dependabot opens one weekly pull request for Go modules, actions and the base
+image together ([config](.github/dependabot.yml)), and one per security fix.
+Each is squashed into a single commit titled as the pull request
+([workflow](.github/workflows/dependabot.yml)); a title over 72 characters
+loses its trailing ` in /<directory>`
+([script](scripts/squash-subject.sh)). When another merge leaves one behind
+`main`, a `@dependabot rebase` comment brings it up to date.
 
 1. **Commit stage**, three jobs in parallel, each limited to 5 minutes:
    - `commit / test`: build, `go mod tidy`, `go vet`, unit tests with

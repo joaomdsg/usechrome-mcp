@@ -78,9 +78,10 @@ jobs:
             devtools/*/go.sum
       - run: make vuln secrets workflows release-check
       # The messages that will land on main: a rebase merge keeps a pull
-      # request's commits, and Dependabot's pull requests merge squashed into
-      # one commit whose message is the title. A push has the commits main
-      # does not have yet, which for a tag on main is none.
+      # request's commits, and a Dependabot pull request merges squashed into
+      # one commit whose message scripts/squash-subject.sh makes from its
+      # title. A push has the commits main does not have yet, which for a tag
+      # on main is none.
       - name: commit messages
         env:
           DEPENDABOT: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}

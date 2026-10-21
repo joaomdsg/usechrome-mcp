@@ -1,6 +1,7 @@
 # Dependabot's pull requests merge themselves once the pipeline's required
-# jobs pass. Squashed with the title as the whole message, their commits land
-# as one line, which the pipeline checks as it checks every other message.
+# jobs pass. Squashed into one commit whose message is the title, shortened
+# by scripts/squash-subject.sh, they land as one line, which the pipeline
+# checks as it checks every other message.
 name: dependabot
 
 on: pull_request
@@ -17,7 +18,18 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - run: gh pr merge --auto --squash --subject "$PR_TITLE" --body "" "$PR_URL"
+      # main's script, not the pull request's: this job holds a write token.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      # A rebase runs this again; setting auto-merge afresh makes the merge
+      # use the subject this run computed, not an earlier one.
+      - run: |
+          if [[ $(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null') == true ]]; then
+            gh pr merge --disable-auto "$PR_URL"
+          fi
+          gh pr merge --auto --squash --subject "$(scripts/squash-subject.sh "$PR_TITLE")" --body "" "$PR_URL"
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
