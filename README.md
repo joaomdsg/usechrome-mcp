@@ -38,12 +38,16 @@ go install github.com/joaomdsg/usechrome-mcp/cmd/usechrome-mcp@latest
 
 Or download a binary for Linux, macOS or Windows, on amd64 or arm64, from the
 [releases](https://github.com/joaomdsg/usechrome-mcp/releases). Each release has
-checksums, an SBOM and a build provenance attestation, which
+checksums, an SBOM per archive and a build provenance attestation, which
 `gh attestation verify <file> --repo joaomdsg/usechrome-mcp` checks.
 
 The binary launches Chrome or Chromium from your `PATH`; `-chrome-path` names
-another one. The container image brings its own Chromium:
-`ghcr.io/joaomdsg/usechrome-mcp`.
+another one. The container image, `ghcr.io/joaomdsg/usechrome-mcp`, brings
+Debian's Chromium for linux/amd64 and linux/arm64, tagged with each release and
+`latest`. It runs Chromium without its sandbox, because Docker's default seccomp
+profile denies the user namespaces the sandbox needs; the container takes its
+place. `gh attestation verify oci://ghcr.io/joaomdsg/usechrome-mcp:<tag> --repo
+joaomdsg/usechrome-mcp` checks the image.
 
 ## Add it to Claude Code
 
@@ -246,13 +250,18 @@ fails.
      statements, nesting complexity 5, maintainability index 20, no
      duplicate blocks of 150 tokens, and a doc comment on everything exported.
    - `commit / audit`: govulncheck, gitleaks over the whole history,
-     actionlint, and commit messages of one imperative line of at most 72
-     characters.
-2. **Acceptance stage**: the binary the commit stage built runs over stdio
-   against real headless Chromium and local fixture pages. The tests speak
-   only MCP, through a small domain language in [acceptance/dsl](acceptance/dsl).
-3. **Release stage**: a `v*` tag builds the binaries and the container image
-   and publishes them with checksums, an SBOM and provenance.
+     actionlint, `goreleaser check` on the release configuration, and commit
+     messages of one imperative line of at most 72 characters.
+2. **Acceptance stage**, two jobs, both against the binary the commit stage
+   built: `acceptance / binary` runs it over stdio against real headless
+   Chromium and local fixture pages; `acceptance / image` runs the same tests
+   against it inside the release image. The tests speak only MCP, through a
+   small domain language in [acceptance/dsl](acceptance/dsl).
+3. **Release stage**: a `v*` tag runs the stages above, then
+   [GoReleaser](.goreleaser.yaml) builds the binaries and the image and
+   publishes them with checksums, SBOMs and signed provenance. Go builds are
+   reproducible, so the release fails unless its linux/amd64 build is
+   byte-identical to the binary the acceptance stage tested.
 
 The linter also holds the architecture in place. The tools see the browser only
 through the plain types in `internal/browser`. The chromedp adapter in
@@ -265,7 +274,8 @@ You need Go 1.26 and Chrome or Chromium. The Makefile runs the same checks, with
 the same pinned tool versions, as the pipeline:
 
 ```sh
-make commit-stage   # build, test, coverage, lint, vulnerabilities, secrets
-make acceptance     # the acceptance tests against dist/usechrome-mcp
-make readme         # rewrite the reference above after changing a flag or a tool
+make commit-stage      # build, test, coverage, lint, vulnerabilities, secrets, workflows, release config
+make acceptance        # the acceptance tests against dist/usechrome-mcp
+make acceptance-image  # the same tests inside the release image; needs Docker
+make readme            # rewrite the reference above after changing a flag or a tool
 ```
