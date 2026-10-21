@@ -38,6 +38,7 @@ dockers_v2:
       org.opencontainers.image.title: usechrome-mcp
       org.opencontainers.image.description: MCP server that gives an AI agent a real Chromium browser
       org.opencontainers.image.source: https://github.com/joaomdsg/usechrome-mcp
+      org.opencontainers.image.licenses: MIT
       org.opencontainers.image.version: "{{.Tag}}"
       org.opencontainers.image.revision: "{{.FullCommit}}"
       org.opencontainers.image.created: "{{.CommitDate}}"

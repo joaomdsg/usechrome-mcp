@@ -279,3 +279,7 @@ make acceptance        # the acceptance tests against dist/usechrome-mcp
 make acceptance-image  # the same tests inside the release image; needs Docker
 make readme            # rewrite the reference above after changing a flag or a tool
 ```
+
+## License
+
+[MIT](LICENSE).
