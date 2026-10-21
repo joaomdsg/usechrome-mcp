@@ -58,15 +58,21 @@ func (a *Agent) interact(el Element, action, arg, value string) After {
 }
 
 func interactArgs(el Element, action, arg, value string) map[string]any {
-	args := map[string]any{"action": action}
+	args := elementArgs(el)
+	args["action"] = action
+	if arg != "" {
+		args[arg] = value
+	}
+	return args
+}
+
+func elementArgs(el Element) map[string]any {
+	args := map[string]any{}
 	if el.Ref != "" {
 		args["ref"] = el.Ref
 	}
 	if el.Selector != "" {
 		args["selector"] = el.Selector
-	}
-	if arg != "" {
-		args[arg] = value
 	}
 	return args
 }

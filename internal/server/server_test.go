@@ -38,6 +38,10 @@ func (noBrowser) Interact(context.Context, browser.InteractRequest) (browser.Int
 	return browser.Interaction{}, errors.New("no browser")
 }
 
+func (noBrowser) Styles(context.Context, browser.StylesRequest) (browser.Styles, error) {
+	return browser.Styles{}, errors.New("no browser")
+}
+
 func connect(t *testing.T) *mcp.ClientSession {
 	t.Helper()
 	serverT, clientT := mcp.NewInMemoryTransports()
@@ -73,7 +77,7 @@ func TestServerListsEveryTool(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"eval", "interact", "navigate", "screenshot", "snapshot", "viewport"}; !slices.Equal(names, want) {
+	if want := []string{"eval", "interact", "navigate", "screenshot", "snapshot", "styles", "viewport"}; !slices.Equal(names, want) {
 		t.Errorf("tools = %v, want %v", names, want)
 	}
 }
