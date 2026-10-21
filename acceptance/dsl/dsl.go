@@ -82,15 +82,18 @@ func NewAgent(t testing.TB) *Agent {
 	return &Agent{t: t, client: c}
 }
 
-func (a *Agent) call(tool string, args, out any) {
+func (a *Agent) call(tool string, args, out any) []mcpstdio.Image {
 	a.t.Helper()
-	if err := a.client.Call(a.t.Context(), tool, args, out); err != nil {
+	images, err := a.client.Call(a.t.Context(), tool, args, out)
+	if err != nil {
 		a.t.Fatal(err)
 	}
+	return images
 }
 
 func (a *Agent) try(tool string, args any) error {
 	a.t.Helper()
 	var out any
-	return a.client.Call(a.t.Context(), tool, args, &out)
+	_, err := a.client.Call(a.t.Context(), tool, args, &out)
+	return err
 }

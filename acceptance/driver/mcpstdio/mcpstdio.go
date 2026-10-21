@@ -40,21 +40,33 @@ func Start(ctx context.Context, stderr io.Writer, bin string, args ...string) (*
 	return &Client{session: session}, nil
 }
 
-// Call invokes a tool and decodes its structured result into out. An error
-// result comes back as a *ToolError.
-func (c *Client) Call(ctx context.Context, tool string, args, out any) error {
+// Image is an image a tool returned.
+type Image struct {
+	MIMEType string
+	Data     []byte
+}
+
+// Call invokes a tool, decodes its structured result into out and returns
+// the images it carries. An error result comes back as a *ToolError.
+func (c *Client) Call(ctx context.Context, tool string, args, out any) ([]Image, error) {
 	res, err := c.session.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
 	if err != nil {
-		return fmt.Errorf("%s: %w", tool, err)
+		return nil, fmt.Errorf("%s: %w", tool, err)
 	}
 	if res.IsError {
-		return &ToolError{Tool: tool, Text: text(res.Content)}
+		return nil, &ToolError{Tool: tool, Text: text(res.Content)}
 	}
 	b, err := json.Marshal(res.StructuredContent)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return json.Unmarshal(b, out)
+	var images []Image
+	for _, c := range res.Content {
+		if ic, ok := c.(*mcp.ImageContent); ok {
+			images = append(images, Image{MIMEType: ic.MIMEType, Data: ic.Data})
+		}
+	}
+	return images, json.Unmarshal(b, out)
 }
 
 // Close closes the server's stdin and waits for the process to exit.
