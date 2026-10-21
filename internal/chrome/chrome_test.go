@@ -37,6 +37,8 @@ func site(t *testing.T) *httptest.Server {
 // passes a 2048-task container limit, and Chrome then aborts page loads.
 var browserSlots = make(chan struct{}, 4)
 
+const opTimeout = 10 * time.Second
+
 func newBrowser(t *testing.T) *chrome.Browser {
 	t.Helper()
 	browserSlots <- struct{}{}
@@ -44,7 +46,7 @@ func newBrowser(t *testing.T) *chrome.Browser {
 	t.Cleanup(func() { <-browserSlots })
 	// CI runners forbid the user namespaces the sandbox needs, and tests
 	// only load local fixtures.
-	b := chrome.New(context.Background(), chrome.Options{NoSandbox: true, Timeout: 10 * time.Second})
+	b := chrome.New(context.Background(), chrome.Options{NoSandbox: true, Timeout: opTimeout})
 	t.Cleanup(func() {
 		if err := b.Close(); err != nil {
 			t.Errorf("close: %v", err)
