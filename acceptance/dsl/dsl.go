@@ -17,6 +17,11 @@ const mainPkg = "github.com/joaomdsg/usechrome-mcp/cmd/usechrome-mcp"
 
 var binary string
 
+// agentSlots caps live servers, each with its own Chromium, whatever the core
+// count: an idle headless Chromium is 12 processes and 130 tasks, and one per
+// core on a 28-core box passes a 2048-task container limit.
+var agentSlots = make(chan struct{}, 4)
+
 // Run runs the tests against the binary that USECHROME_MCP_BIN names, or
 // against a fresh build when it is unset. Call it from TestMain.
 func Run(m *testing.M) int {
@@ -59,6 +64,10 @@ type Agent struct {
 // NewAgent starts a server for the test and stops it when the test ends.
 func NewAgent(t testing.TB) *Agent {
 	t.Helper()
+	agentSlots <- struct{}{}
+	// Registered before the server stops, so it runs after: cleanups run
+	// last-in first-out.
+	t.Cleanup(func() { <-agentSlots })
 	// CI runners forbid the user namespaces the sandbox needs, and the
 	// browser only loads local fixtures.
 	c, err := mcpstdio.Start(t.Context(), t.Output(), binary, "-no-sandbox")

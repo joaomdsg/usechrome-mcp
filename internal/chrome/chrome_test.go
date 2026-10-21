@@ -32,8 +32,16 @@ func site(t *testing.T) *httptest.Server {
 	return srv
 }
 
+// browserSlots caps live browsers whatever the core count. An idle headless
+// Chromium is 12 processes and 130 tasks, so one per core on a 28-core box
+// passes a 2048-task container limit, and Chrome then aborts page loads.
+var browserSlots = make(chan struct{}, 4)
+
 func newBrowser(t *testing.T) *chrome.Browser {
 	t.Helper()
+	browserSlots <- struct{}{}
+	// Registered before Close, so it runs after it: cleanups run last-in first-out.
+	t.Cleanup(func() { <-browserSlots })
 	// CI runners forbid the user namespaces the sandbox needs, and tests
 	// only load local fixtures.
 	b := chrome.New(context.Background(), chrome.Options{NoSandbox: true, Timeout: 10 * time.Second})
