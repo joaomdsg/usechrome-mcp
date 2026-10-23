@@ -240,10 +240,11 @@ and the [pipeline](.github/workflows/pipeline.yml) is the only gate: what a
 reviewer would check, it checks, and it fails the build when a check fails. A
 ruleset on `main` requires the six commit, acceptance and mutation jobs to
 pass on a branch that is up to date with `main`, takes no approvals, and keeps
-history linear. Pull requests are opened with auto-merge, so they merge themselves once
-the jobs pass: rebased, so each small commit lands as it was written.
-Dependabot opens one weekly pull request for Go modules, actions and the base
-image together ([config](.github/dependabot.yml)), and one per security fix.
+history linear. Pull requests are opened with auto-merge, so they merge
+themselves once the jobs pass: rebased, so each small commit lands as it was
+written. Dependabot opens one weekly pull request for Go modules, actions and
+the base image together ([config](.github/dependabot.yml)), and groups Go
+security fixes into a pull request of their own.
 Each is squashed into a single commit titled as the pull request
 ([workflow](.github/workflows/dependabot.yml)); a title over 72 characters
 loses its trailing ` in /<directory>`
