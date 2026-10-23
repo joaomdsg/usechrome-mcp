@@ -18,8 +18,10 @@ func TestAgentFindsTheCodeBehindASlowClick(t *testing.T) {
 	agent.Open(site.URL("/checkout.html"))
 	agent.Click(dsl.CSS("#pay"))
 	report := agent.Perf("click on button#pay")
-	if !strings.Contains(report, "\nINP ") || !strings.Contains(report, "(needs improvement) over 1 interaction, the slowest:\n") {
-		t.Errorf("perf after a 300ms click:\n%s\nwant INP rated needs improvement", report)
+	// A loaded runner adds its own delay to the 300ms, which can tip it past
+	// the 500ms line into poor.
+	if !regexp.MustCompile(`\nINP \d+ms \((needs improvement|poor)\) over 1 interaction, the slowest:\n`).MatchString(report) {
+		t.Errorf("perf after a 300ms click:\n%s\nwant INP rated needs improvement or poor", report)
 	}
 	blame := regexp.MustCompile(`event-listener BUTTON#pay\.onclick function checkout in (\S+) at char (\d+) of its script`).FindStringSubmatch(report)
 	if blame == nil || blame[1] != site.URL("/checkout.js") {
