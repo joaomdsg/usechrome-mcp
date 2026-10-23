@@ -18,6 +18,12 @@ updates:
     patterns: ["*"]
     cooldown:
       default-days: 7
+    # Security updates skip the weekly group and would otherwise arrive one
+    # pull request per dependency, falling behind each other the same way.
+    groups:
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
     # GoReleaser 2.18 needs Go 1.27, and setup-go runs only the Go that go.mod
     # names (1.26.10); one failing bump would hold back the whole group.
     ignore:
