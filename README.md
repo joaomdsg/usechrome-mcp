@@ -238,9 +238,9 @@ Read or change a tab's viewport, as DevTools device mode does. With no arguments
 There is no code review. Every change reaches `main` through a pull request,
 and the [pipeline](.github/workflows/pipeline.yml) is the only gate: what a
 reviewer would check, it checks, and it fails the build when a check fails. A
-ruleset on `main` requires the five commit and acceptance jobs to pass on a
-branch that is up to date with `main`, takes no approvals, and keeps history
-linear. Pull requests are opened with auto-merge, so they merge themselves once
+ruleset on `main` requires the six commit, acceptance and mutation jobs to
+pass on a branch that is up to date with `main`, takes no approvals, and keeps
+history linear. Pull requests are opened with auto-merge, so they merge themselves once
 the jobs pass: rebased, so each small commit lands as it was written.
 Dependabot opens one weekly pull request for Go modules, actions and the base
 image together ([config](.github/dependabot.yml)), and one per security fix.
@@ -268,7 +268,14 @@ loses its trailing ` in /<directory>`
    Chromium and local fixture pages; `acceptance / image` runs the same tests
    against it inside the release image. The tests speak only MCP, through a
    small domain language in [acceptance/dsl](acceptance/dsl).
-3. **Release stage**: a `v*` tag runs the stages above, then
+3. **Mutation stage**, on pull requests only, alongside acceptance and
+   limited to 30 minutes: `mutation / changed lines` runs gomutants on the
+   lines the pull request changes and fails on any surviving mutant, 100%
+   efficacy. Efficacy leaves out TIMED OUT mutants, and gomutants' memory cap
+   kills some that way while naming only their package
+   ([gomutants#127](https://github.com/gomutants/gomutants/issues/127)), so
+   the job log lists each one.
+4. **Release stage**: a `v*` tag runs the commit and acceptance stages, then
    [GoReleaser](.goreleaser.yaml) builds the binaries and the image and
    publishes them with checksums, SBOMs and signed provenance. Go builds are
    reproducible, so the release fails unless its linux/amd64 build is
@@ -288,6 +295,7 @@ the same pinned tool versions, as the pipeline:
 make commit-stage      # build, test, coverage, lint, vulnerabilities, secrets, workflows, release config
 make acceptance        # the acceptance tests against dist/usechrome-mcp
 make acceptance-image  # the same tests inside the release image; needs Docker
+make mutation          # mutation testing of the lines changed since origin/main
 make readme            # rewrite the reference above after changing a flag or a tool
 ```
 
