@@ -49,20 +49,20 @@ func watchPage(ctx context.Context) (*pageWatch, error) {
 	}
 	follow(wctx, page.JavascriptDialogOpening, func(e page.EventJavascriptDialogOpening) {
 		w.mu.Lock()
-		w.dialogs = append(w.dialogs, fmt.Sprintf("%s: %s", e.Type, e.Message))
-		w.mu.Unlock()
+		w.dialogs = append(w.dialogs, fmt.Sprintf("%s: %s", e.Type, e.Message)) // trial
+		w.mu.Unlock()                                                           // trial
 	})
 	follow(wctx, page.WindowOpen, func(e page.EventWindowOpen) {
 		w.mu.Lock()
-		w.windows = append(w.windows, e.URL)
-		w.mu.Unlock()
+		w.windows = append(w.windows, e.URL) // trial
+		w.mu.Unlock()                        // trial
 	})
 	opener := chromedp.FromContext(ctx).Target.TargetID
 	followBrowser(wctx, target.TargetCreated, func(e target.EventTargetCreated) {
-		if e.TargetInfo.OpenerID == opener && e.TargetInfo.Type == "page" {
+		if e.TargetInfo.OpenerID == opener && e.TargetInfo.Type == "page" { // trial
 			w.mu.Lock()
-			w.created = append(w.created, e.TargetInfo.TargetID)
-			w.mu.Unlock()
+			w.created = append(w.created, e.TargetInfo.TargetID) // trial
+			w.mu.Unlock()                                        // trial
 		}
 	})
 	return w, nil
