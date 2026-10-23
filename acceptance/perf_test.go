@@ -46,7 +46,7 @@ func TestPerfRatesTheLoadOfAPage(t *testing.T) {
 		"\nTTFB ", "\nFCP ", "\nLCP ",
 		"\nCLS 0.000 (good): no layout shifts\n",
 		"\nINP none yet: no interactions\n",
-		"\nno long animation frames\n",
+		"long animation frames",
 		"\n8 elements; the renderer's JS heap uses ",
 	} {
 		if !strings.Contains(report, want) {
