@@ -5,13 +5,14 @@
 tool = go tool -modfile=devtools/$(1)/go.mod $(1)
 BIN := dist/usechrome-mcp
 COMMITS ?= origin/main..HEAD
+BASE ?= origin/main
 # The pipeline sets the tag on a release run; .goreleaser.yaml builds with
 # the same flags, so the release reproduces the tested binary.
 VERSION ?= dev
 IMAGE ?= usechrome-mcp:acceptance
 PLATFORM := linux/$(shell go env GOARCH)
 
-.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows release-check release commit-messages squash-message acceptance acceptance-image readme
+.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows release-check release commit-messages squash-message acceptance acceptance-image mutation readme
 
 commit-stage: build tidy vet test coverage lint vuln secrets workflows release-check
 
@@ -71,6 +72,18 @@ acceptance-image:
 	cp $(BIN) dist/image/$(PLATFORM)/
 	docker build --platform $(PLATFORM) -t $(IMAGE) -f Dockerfile dist/image
 	USECHROME_MCP_BIN=$(CURDIR)/scripts/run-image.sh USECHROME_MCP_IMAGE=$(IMAGE) go test -tags acceptance -count=1 -timeout 5m -v ./acceptance/...
+
+# Mutation testing of the lines changed since $(BASE). The threshold is the
+# gomutants Action's default, which "gates on any LIVED mutant"
+# (github.com/gomutants/gomutants/blob/v0.7.2/action.yml). TIMED OUT, which
+# efficacy leaves out, includes mutants killed by gomutants' 2 GiB memory cap,
+# which over-counts Chrome's shared memory
+# (github.com/gomutants/gomutants/issues/127), so the log lists them. The
+# report goes outside the checkout, which GoReleaser requires to be clean.
+mutation:
+	report=$$(mktemp); \
+	$(call tool,gomutants) -w 4 --cache=off --changed-since $(BASE) --test-flags="-parallel=1 -failfast" --annotations github --threshold-efficacy 100 -o "$$report" ./cmd/... ./internal/...; \
+	status=$$?; scripts/list-timed-out.sh "$$report"; rm -f "$$report"; exit $$status
 
 readme:
 	go test ./cmd/usechrome-mcp -run TestReadme -count=1 -update

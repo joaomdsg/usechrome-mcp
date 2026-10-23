@@ -1,8 +1,10 @@
 # The deployment pipeline and the only gate on main: the ruleset on main
-# requires its commit and acceptance jobs, and a pull request merges itself
-# once they pass. The commit stage gives feedback in under five minutes, the
-# acceptance stage tests the very binary the commit stage built, alone and
-# inside the release image, and a version tag releases that binary.
+# requires its commit and acceptance jobs and `mutation / changed lines`, and
+# a pull request merges itself once they pass. The commit stage gives feedback
+# in under five minutes, the acceptance stage tests the very binary the commit
+# stage built, alone and inside the release image, the mutation stage tests
+# the tests on the lines a pull request changes, and a version tag releases
+# that binary.
 name: pipeline
 
 on:
@@ -129,6 +131,26 @@ jobs:
           name: usechrome-mcp
           path: dist
       - run: chmod +x dist/usechrome-mcp && make acceptance-image
+
+  mutation:
+    name: mutation / changed lines
+    if: github.event_name == 'pull_request'
+    needs: [test, lint, audit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            devtools/*/go.sum
+      - run: make mutation BASE="$BASE"
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
 
   release:
     name: release
