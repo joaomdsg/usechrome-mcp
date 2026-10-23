@@ -73,13 +73,9 @@ acceptance-image:
 	docker build --platform $(PLATFORM) -t $(IMAGE) -f Dockerfile dist/image
 	USECHROME_MCP_BIN=$(CURDIR)/scripts/run-image.sh USECHROME_MCP_IMAGE=$(IMAGE) go test -tags acceptance -count=1 -timeout 5m -v ./acceptance/...
 
-# Mutation testing of the lines changed since $(BASE). The threshold is the
-# gomutants Action's default, which "gates on any LIVED mutant"
-# (github.com/gomutants/gomutants/blob/v0.7.2/action.yml). TIMED OUT, which
-# efficacy leaves out, includes mutants killed by gomutants' 2 GiB memory cap,
-# which over-counts Chrome's shared memory
-# (github.com/gomutants/gomutants/issues/127), so the log lists them. The
-# report goes outside the checkout, which GoReleaser requires to be clean.
+# The threshold is the gomutants Action's default, which "gates on any LIVED
+# mutant" (github.com/gomutants/gomutants/blob/v0.7.2/action.yml). The report
+# goes outside the checkout, which GoReleaser requires to be clean.
 mutation:
 	report=$$(mktemp); \
 	$(call tool,gomutants) -w 4 --cache=off --changed-since $(BASE) --test-flags="-parallel=1 -failfast" --annotations github --threshold-efficacy 100 -o "$$report" ./cmd/... ./internal/...; \
