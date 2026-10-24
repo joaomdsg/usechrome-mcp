@@ -48,12 +48,15 @@ func TestPerfRatesTheLoadOfAPage(t *testing.T) {
 		"\nTTFB ", "\nFCP ", "\nLCP ",
 		"\nCLS 0.000 (good): no layout shifts\n",
 		"\nINP none yet: no interactions\n",
-		"long animation frames",
 		"\n8 elements; the renderer's JS heap uses ",
 	} {
 		if !strings.Contains(report, want) {
 			t.Errorf("perf of the home page:\n%s\nwant %q", report, want)
 		}
+	}
+	// A loaded runner can drop a frame even on this page, so either count passes.
+	if !regexp.MustCompile(`\n(no|\d+) long animation frames`).MatchString(report) {
+		t.Errorf("perf of the home page:\n%s\nwant the long animation frames section", report)
 	}
 	if n := strings.Count(report, "ms (good)"); n != 3 {
 		t.Errorf("perf of the home page:\n%s\nwant TTFB, FCP and LCP rated good", report)
