@@ -55,7 +55,7 @@ func TestPerfRatesTheLoadOfAPage(t *testing.T) {
 		}
 	}
 	// A loaded runner can drop a frame even on this page, so either count passes.
-	if !regexp.MustCompile(`\n(no|\d+) long animation frames`).MatchString(report) {
+	if !regexp.MustCompile(`\n(no long animation frames|(1 long animation frame|([2-9]|\d\d+) long animation frames), \d+ms blocking in all, the slowest:)\n`).MatchString(report) {
 		t.Errorf("perf of the home page:\n%s\nwant the long animation frames section", report)
 	}
 	if n := strings.Count(report, "ms (good)"); n != 3 {
