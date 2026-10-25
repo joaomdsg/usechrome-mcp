@@ -238,6 +238,14 @@ func TestPerfListsOnlyTheSlowestFramesAndScripts(t *testing.T) {
 	}
 }
 
+func TestPerfCountsOneLongAnimationFrameInTheSingular(t *testing.T) {
+	t.Parallel()
+	got := perfText(t, browser.Perf{Frames: []browser.Frame{{Duration: 60 * millis, Blocking: 10 * millis}}})
+	if want := "\n1 long animation frame, 10ms blocking in all, the slowest:\n"; !strings.Contains(got, want) {
+		t.Errorf("perf =\n%s\nwant%s", got, want)
+	}
+}
+
 func TestPerfReportsBrowserError(t *testing.T) {
 	t.Parallel()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)

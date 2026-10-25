@@ -157,10 +157,7 @@ func writeInteractions(b *strings.Builder, p browser.Perf) {
 		b.WriteString("\nINP none yet: no interactions\n")
 		return
 	}
-	count := fmt.Sprintf("%d interaction", p.InteractionCount)
-	if p.InteractionCount > 1 {
-		count += "s"
-	}
+	count := plural(p.InteractionCount, "interaction")
 	if d, ok := inp(p); ok {
 		fmt.Fprintf(b, "\nINP %s (%s) over %s", ms(d), inpLimits.rate(float64(d.Milliseconds())), count)
 	} else {
@@ -196,6 +193,14 @@ func inp(p browser.Perf) (time.Duration, bool) {
 	return 0, false
 }
 
+// plural counts n of noun: "1 interaction", "2 interactions".
+func plural(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("1 %s", noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
 func writeFrames(b *strings.Builder, frames []browser.Frame) {
 	if len(frames) == 0 {
 		b.WriteString("\nno long animation frames\n")
@@ -205,7 +210,7 @@ func writeFrames(b *strings.Builder, frames []browser.Frame) {
 	for _, f := range frames {
 		blocking += f.Blocking
 	}
-	fmt.Fprintf(b, "\n%d long animation frames, %s blocking in all, the slowest:\n", len(frames), ms(blocking))
+	fmt.Fprintf(b, "\n%s, %s blocking in all, the slowest:\n", plural(len(frames), "long animation frame"), ms(blocking))
 	list, more := largest(frames, func(f browser.Frame) float64 { return float64(f.Duration) })
 	for _, f := range list {
 		fmt.Fprintf(b, "  %s at %s, %s blocking\n", ms(f.Duration), ms(f.Start), ms(f.Blocking))
