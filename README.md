@@ -268,7 +268,9 @@ loses its trailing ` in /<directory>`
    built: `acceptance / binary` runs it over stdio against real headless
    Chromium and local fixture pages; `acceptance / image` runs the same tests
    against it inside the release image. The tests speak only MCP, through a
-   small domain language in [acceptance/dsl](acceptance/dsl).
+   small domain language in [acceptance/dsl](acceptance/dsl). Neither
+   Chromium is pinned, so the pipeline also runs on `main` every Monday at
+   06:17 UTC and fails when a new Chromium breaks a tool.
 3. **Mutation stage**, on pull requests only, alongside acceptance and
    limited to 30 minutes: `mutation / changed lines` runs gomutants on the
    lines the pull request changes and fails on any surviving mutant, 100%
