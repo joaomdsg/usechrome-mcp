@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Pointer Pad</title>
+<style>
+  body { margin: 0; }
+  #pad { position: fixed; inset: 0; }
+</style>
+<div id="pad"></div>
+<script>
+  // Each pointer event the pad saw, as JSON for the eval tool to read.
+  const seen = [];
+  for (const type of ["pointerdown", "pointerup", "click"]) {
+    pad.addEventListener(type, e => seen.push({type: e.type, x: e.clientX, y: e.clientY, pointerType: e.pointerType, trusted: e.isTrusted}));
+  }
+  window.events = () => JSON.stringify(seen);
+</script>
+</html>

@@ -3,6 +3,8 @@
 package acceptance_test
 
 import (
+	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -59,5 +61,49 @@ func TestClickingAStaleRefAsksForANewSnapshot(t *testing.T) {
 	agent.Click(dsl.Ref(link))
 	if err := agent.TryClick(dsl.Ref(link)); err == nil || !strings.Contains(err.Error(), "take a new snapshot") {
 		t.Errorf("click on a ref from the previous page: err = %v, want to take a new snapshot", err)
+	}
+}
+
+// pointerEvent is what pad.html records of each pointer event.
+type pointerEvent struct {
+	Type        string  `json:"type"`
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	PointerType string  `json:"pointerType"`
+	Trusted     bool    `json:"trusted"`
+}
+
+func pointerEvents(t *testing.T, agent *dsl.Agent) []pointerEvent {
+	t.Helper()
+	var got []pointerEvent
+	if err := json.Unmarshal([]byte(agent.Eval("events()").Value.(string)), &got); err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func TestClickAtAPointPressesTheMouseThere(t *testing.T) {
+	t.Parallel()
+	site := dsl.NewSite(t)
+	agent := dsl.NewAgent(t)
+	agent.Open(site.URL("/pad.html"))
+	agent.ClickAt(120, 80)
+	want := []pointerEvent{
+		{"pointerdown", 120, 80, "mouse", true},
+		{"pointerup", 120, 80, "mouse", true},
+		{"click", 120, 80, "mouse", true},
+	}
+	if got := pointerEvents(t, agent); !slices.Equal(got, want) {
+		t.Errorf("events after a click at (120, 80):\n got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestClickAtAPointOutsideTheViewportFails(t *testing.T) {
+	t.Parallel()
+	site := dsl.NewSite(t)
+	agent := dsl.NewAgent(t)
+	agent.Open(site.URL("/pad.html"))
+	if err := agent.TryClickAt(120, 100000); err == nil || !strings.Contains(err.Error(), "outside the viewport") {
+		t.Errorf("click at (120, 100000): err = %v, want outside the viewport", err)
 	}
 }

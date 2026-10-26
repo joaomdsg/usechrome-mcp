@@ -33,6 +33,21 @@ func (a *Agent) Click(el Element) After {
 	return a.interact(el, "click", "", "")
 }
 
+// ClickAt clicks with the mouse at x, y in CSS pixels from the viewport's
+// top-left corner, on whatever is there.
+func (a *Agent) ClickAt(x, y float64) After {
+	a.t.Helper()
+	var after After
+	a.call("interact", map[string]any{"action": "click", "x": x, "y": y}, &after)
+	return after
+}
+
+// TryClickAt is ClickAt for a click expected to fail; it returns the failure.
+func (a *Agent) TryClickAt(x, y float64) error {
+	a.t.Helper()
+	return a.try("interact", map[string]any{"action": "click", "x": x, "y": y})
+}
+
 // TryClick is Click for a click expected to fail; it returns the failure.
 func (a *Agent) TryClick(el Element) error {
 	a.t.Helper()
