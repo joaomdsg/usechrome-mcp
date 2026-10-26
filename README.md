@@ -127,13 +127,15 @@ Run JavaScript in a tab as in the DevTools console and return the result's type 
 
 #### `interact`
 
-Act on an element as a person would: click, hover, type, press a key or select an option. Name the element by its ref from the snapshot tool, such as e12, or by a CSS selector. click and hover scroll the element into view and use the mouse at its centre; they fail if it is disabled, hidden or covered. type replaces the element's content key by key, or types at the focus when no element is named. press sends a key to the element, or else to the focus. select picks an option of a <select> by value or label. When the action starts a navigation, the call waits for the new page to load. JavaScript dialogs are accepted and listed, and so are the tabs the action opened.
+Act on an element as a person would: click, hover, type, press a key or select an option. Name the element by its ref from the snapshot tool, such as e12, or by a CSS selector. click and hover scroll the element into view and use the mouse at its centre; they fail if it is disabled, hidden or covered. click can instead take x and y, CSS pixels from the viewport's top-left corner, and clicks whatever is there; it fails if the point is outside the viewport. type replaces the element's content key by key, or types at the focus when no element is named. press sends a key to the element, or else to the focus. select picks an option of a <select> by value or label. When the action starts a navigation, the call waits for the new page to load. JavaScript dialogs are accepted and listed, and so are the tabs the action opened.
 
 | Argument | Type | Description |
 | --- | --- | --- |
 | `action` (required) | string: `click`, `hover`, `type`, `press`, `select` | what to do: click, hover, type, press or select |
 | `ref` | string | ref of the element from the snapshot tool, such as e12 |
 | `selector` | string | CSS selector of the element, instead of a ref |
+| `x` | number | for click: CSS pixels from the viewport's left edge, with y and instead of an element |
+| `y` | number | for click: CSS pixels from the viewport's top edge, with x and instead of an element |
 | `text` | string | for type: the text, which replaces the element's content; empty clears it |
 | `key` | string | for press: a key such as Enter, Tab, ArrowDown or Control+a |
 | `option` | string | for select: the value or label of the option to pick |

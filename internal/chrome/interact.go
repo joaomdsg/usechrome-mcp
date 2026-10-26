@@ -36,18 +36,14 @@ func (b *Browser) Interact(ctx context.Context, req browser.InteractRequest) (br
 
 func act(ctx context.Context, req browser.InteractRequest) error {
 	defer releaseElements(ctx)
-	var el runtime.RemoteObjectID
-	if req.Ref != "" || req.Selector != "" {
-		var err error
-		if el, err = element(ctx, req.Ref, req.Selector); err != nil {
-			return err
-		}
+	el, err := requestElement(ctx, req)
+	if err != nil {
+		return err
 	}
 	var problem string
-	var err error
 	switch req.Action {
 	case browser.Click, browser.Hover:
-		problem, err = point(ctx, el, req.Action)
+		problem, err = point(ctx, el, req.Action, req.At)
 	case browser.Type:
 		problem, err = typeText(ctx, el, req.Text)
 	case browser.Press:
@@ -61,6 +57,14 @@ func act(ctx context.Context, req browser.InteractRequest) error {
 		return fmt.Errorf("%s %s", described(req), problem)
 	}
 	return err
+}
+
+// requestElement returns the element req names, or none.
+func requestElement(ctx context.Context, req browser.InteractRequest) (runtime.RemoteObjectID, error) {
+	if req.Ref == "" && req.Selector == "" {
+		return "", nil
+	}
+	return element(ctx, req.Ref, req.Selector)
 }
 
 var errNoElement = errors.New("needs a ref or a selector")
@@ -98,23 +102,49 @@ type spot struct {
 	Problem  string
 }
 
-// point moves the mouse to the element and, for a click, presses it.
-func point(ctx context.Context, el runtime.RemoteObjectID, g browser.Gesture) (string, error) {
-	if el == "" {
-		return "", fmt.Errorf("%s %w", g, errNoElement)
-	}
-	s, err := callOn[spot](ctx, el, pointJS)
+// point moves the mouse to the element, or to at, and, for a click, presses
+// it.
+func point(ctx context.Context, el runtime.RemoteObjectID, g browser.Gesture, at *browser.Point) (string, error) {
+	s, err := aim(ctx, el, g, at)
 	if err != nil || s.Problem != "" {
 		return s.Problem, err
-	}
-	if g == browser.Click && s.Disabled {
-		return "is disabled", nil
 	}
 	actions := []chromedp.Action[chromedp.Void]{chromedp.MouseEvent(chromedp.MouseMoved, s.X, s.Y)}
 	if g == browser.Click {
 		actions = append(actions, chromedp.MouseClickXY(s.X, s.Y))
 	}
 	return "", chromedp.Do(ctx, actions...)
+}
+
+// aim finds where a gesture lands: at, checked only for being in the
+// viewport, since a person aiming at a point hits whatever is there; or
+// else the centre of the element's visible part. A person can hover a
+// disabled element but not press it.
+func aim(ctx context.Context, el runtime.RemoteObjectID, g browser.Gesture, at *browser.Point) (spot, error) {
+	if at != nil {
+		return spot{X: at.X, Y: at.Y}, inViewport(ctx, *at)
+	}
+	if el == "" {
+		return spot{}, fmt.Errorf("%s %w", g, errNoElement)
+	}
+	s, err := callOn[spot](ctx, el, pointJS)
+	if s.Problem == "" && s.Disabled && g != browser.Hover {
+		s.Problem = "is disabled"
+	}
+	return s, err
+}
+
+type viewportSize struct{ Width, Height float64 }
+
+func inViewport(ctx context.Context, at browser.Point) error {
+	vp, err := chromedp.Run(ctx, chromedp.Evaluate[viewportSize](`({Width: innerWidth, Height: innerHeight})`))
+	if err != nil {
+		return err
+	}
+	if at.X < 0 || at.Y < 0 || at.X >= vp.Width || at.Y >= vp.Height {
+		return fmt.Errorf("point (%g, %g) is outside the viewport, which is %gx%g", at.X, at.Y, vp.Width, vp.Height)
+	}
+	return nil
 }
 
 // focusJS focuses the element and, for typing, selects its content so that

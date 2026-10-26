@@ -1,6 +1,7 @@
 package chrome_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -149,6 +150,35 @@ func TestClickRefusesWhatAPersonCouldNotClick(t *testing.T) {
 	}
 	if got := evalValue(t, b, "covered.textContent"); got != `"Covered"` {
 		t.Errorf("covered button text = %s, want it unclicked", got)
+	}
+}
+
+func TestClickAtAPointHitsWhatIsThere(t *testing.T) {
+	t.Parallel()
+	b, _ := openActPage(t)
+	var at browser.Point
+	if err := json.Unmarshal([]byte(evalValue(t, b, "(r => ({X: r.x + r.width / 2, Y: r.y + r.height / 2}))(count.getBoundingClientRect())")), &at); err != nil {
+		t.Fatal(err)
+	}
+	interact(t, b, browser.InteractRequest{Action: browser.Click, At: &at})
+	if got := evalValue(t, b, "count.textContent"); got != `"1"` {
+		t.Errorf("count after a click at its centre %+v = %s, want \"1\"", at, got)
+	}
+}
+
+func TestClickAtAPointOutsideTheViewportFails(t *testing.T) {
+	t.Parallel()
+	b, _ := openActPage(t)
+	size := evalValue(t, b, "innerWidth + 'x' + innerHeight")
+	w, h := 0.0, 0.0
+	if _, err := fmt.Sscanf(strings.Trim(size, `"`), "%gx%g", &w, &h); err != nil {
+		t.Fatal(err)
+	}
+	for _, at := range []browser.Point{{X: -1, Y: 10}, {X: 10, Y: -0.5}, {X: w, Y: 10}, {X: 10, Y: h}} {
+		_, err := b.Interact(t.Context(), browser.InteractRequest{Action: browser.Click, At: &at})
+		if want := "is outside the viewport, which is " + strings.Trim(size, `"`); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("click at %+v: err = %v, want %q", at, err, want)
+		}
 	}
 }
 

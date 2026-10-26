@@ -3,6 +3,7 @@ package tools_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -44,10 +45,12 @@ func TestInteractPassesEachActionsArgument(t *testing.T) {
 		{map[string]any{"action": "type", "text": "Ada"}, browser.InteractRequest{Action: browser.Type, Text: "Ada"}},
 		{map[string]any{"action": "press", "key": "Enter"}, browser.InteractRequest{Action: browser.Press, Text: "Enter"}},
 		{map[string]any{"action": "select", "selector": "#plan", "option": "Pro"}, browser.InteractRequest{Action: browser.Select, Selector: "#plan", Text: "Pro"}},
+		{map[string]any{"action": "click", "x": 120.5, "y": 80}, browser.InteractRequest{Action: browser.Click, At: &browser.Point{X: 120.5, Y: 80}}},
+		{map[string]any{"action": "click", "x": 0, "y": 0}, browser.InteractRequest{Action: browser.Click, At: &browser.Point{}}},
 	} {
 		in := &fakeInteracter{}
 		res := call(t, interactSession(t, in), "interact", tc.args)
-		if res.IsError || !slices.Equal(in.got, []browser.InteractRequest{tc.want}) {
+		if res.IsError || !reflect.DeepEqual(in.got, []browser.InteractRequest{tc.want}) {
 			t.Errorf("interact %v: browser got %+v (error %q), want %+v", tc.args, in.got, errorText(res), tc.want)
 		}
 	}
@@ -78,12 +81,16 @@ func TestInteractRejectsArgumentsTheActionDoesNotTake(t *testing.T) {
 		args map[string]any
 		want string
 	}{
-		{map[string]any{"action": "click"}, "click needs a ref or a selector"},
+		{map[string]any{"action": "click"}, "click needs a ref or a selector, or x and y"},
 		{map[string]any{"action": "select", "option": "Pro"}, "select needs a ref or a selector"},
 		{map[string]any{"action": "click", "ref": "e1", "selector": "#a"}, "not both"},
 		{map[string]any{"action": "click", "ref": "e1", "text": "x"}, "click takes no text"},
 		{map[string]any{"action": "type", "ref": "e1", "key": "Enter"}, "type takes no key"},
 		{map[string]any{"action": "press", "key": "Enter", "option": "a"}, "press takes no option"},
+		{map[string]any{"action": "hover", "x": 1, "y": 2}, "hover takes no x and y"},
+		{map[string]any{"action": "type", "text": "a", "x": 1, "y": 2}, "type takes no x and y"},
+		{map[string]any{"action": "press", "key": "Enter", "x": 1, "y": 2}, "press takes no x and y"},
+		{map[string]any{"action": "select", "ref": "e1", "option": "a", "x": 1, "y": 2}, "select takes no x and y"},
 		{map[string]any{"action": "press"}, "press needs key"},
 		{map[string]any{"action": "type"}, "type needs text"},
 		{map[string]any{"action": "select", "ref": "e1"}, "select needs option"},
@@ -94,6 +101,34 @@ func TestInteractRejectsArgumentsTheActionDoesNotTake(t *testing.T) {
 		res := call(t, interactSession(t, in), "interact", tc.args)
 		if !res.IsError || !strings.Contains(errorText(res), tc.want) || len(in.got) != 0 {
 			t.Errorf("interact %v: %q, browser got %+v; want error %q before the browser", tc.args, errorText(res), in.got, tc.want)
+		}
+	}
+}
+
+func TestInteractRejectsXWithoutYAndYWithoutX(t *testing.T) {
+	t.Parallel()
+	for _, args := range []map[string]any{
+		{"action": "click", "x": 1},
+		{"action": "click", "y": 0},
+	} {
+		in := &fakeInteracter{}
+		res := call(t, interactSession(t, in), "interact", args)
+		if !res.IsError || !strings.Contains(errorText(res), "give x and y together") || len(in.got) != 0 {
+			t.Errorf("interact %v: %q, browser got %+v; want an error before the browser", args, errorText(res), in.got)
+		}
+	}
+}
+
+func TestInteractRejectsAPointTogetherWithAnElement(t *testing.T) {
+	t.Parallel()
+	for _, args := range []map[string]any{
+		{"action": "click", "ref": "e1", "x": 1, "y": 2},
+		{"action": "click", "selector": "#a", "x": 1, "y": 2},
+	} {
+		in := &fakeInteracter{}
+		res := call(t, interactSession(t, in), "interact", args)
+		if !res.IsError || !strings.Contains(errorText(res), "an element or x and y, not both") || len(in.got) != 0 {
+			t.Errorf("interact %v: %q, browser got %+v; want an error before the browser", args, errorText(res), in.got)
 		}
 	}
 }
