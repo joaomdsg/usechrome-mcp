@@ -125,15 +125,17 @@ func tap(ctx context.Context, el runtime.RemoteObjectID, at *browser.Point) (str
 	if err != nil || s.Problem != "" {
 		return s.Problem, err
 	}
-	for _, p := range []input.DispatchTouchEventParams{
-		{Type: input.DispatchTouchEventTypeTouchStart, TouchPoints: []*input.TouchPoint{{X: s.X, Y: s.Y}}},
-		{Type: input.DispatchTouchEventTypeTouchEnd, TouchPoints: []*input.TouchPoint{}},
-	} {
-		if _, err := chromedp.Call(ctx, input.DispatchTouchEvent, p); err != nil {
-			return "", err
-		}
-	}
-	return "", nil
+	return "", chromedp.Do(ctx,
+		touch(input.DispatchTouchEventParams{Type: input.DispatchTouchEventTypeTouchStart, TouchPoints: []*input.TouchPoint{{X: s.X, Y: s.Y}}}),
+		touch(input.DispatchTouchEventParams{Type: input.DispatchTouchEventTypeTouchEnd, TouchPoints: []*input.TouchPoint{}}),
+	)
+}
+
+func touch(p input.DispatchTouchEventParams) chromedp.Action[chromedp.Void] {
+	return chromedp.Func(func(ctx context.Context, _ *chromedp.Target) error {
+		_, err := chromedp.Call(ctx, input.DispatchTouchEvent, p)
+		return err
+	})
 }
 
 // aim finds where a gesture lands: at, checked only for being in the
