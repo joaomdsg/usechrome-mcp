@@ -70,8 +70,6 @@ func requestElement(ctx context.Context, req browser.InteractRequest) (runtime.R
 	return element(ctx, req.Ref, req.Selector)
 }
 
-var errNoElement = errors.New("needs a ref or a selector")
-
 func described(req browser.InteractRequest) string {
 	if req.Ref != "" {
 		return "element " + req.Ref
@@ -147,7 +145,7 @@ func aim(ctx context.Context, el runtime.RemoteObjectID, g browser.Gesture, at *
 		return spot{X: at.X, Y: at.Y}, inViewport(ctx, *at)
 	}
 	if el == "" {
-		return spot{}, fmt.Errorf("%s %w", g, errNoElement)
+		return spot{}, fmt.Errorf("%s needs a ref or a selector", g)
 	}
 	s, err := callOn[spot](ctx, el, pointJS)
 	if s.Problem == "" && s.Disabled && g != browser.Hover {
@@ -239,7 +237,7 @@ const selectJS = `function(want) {
 
 func selectOption(ctx context.Context, el runtime.RemoteObjectID, option string) (string, error) {
 	if el == "" {
-		return "", fmt.Errorf("select %w", errNoElement)
+		return "", errors.New("select needs a ref or a selector")
 	}
 	return callOn[string](ctx, el, selectJS, option)
 }
