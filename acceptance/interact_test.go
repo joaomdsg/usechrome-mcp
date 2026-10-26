@@ -107,3 +107,36 @@ func TestClickAtAPointOutsideTheViewportFails(t *testing.T) {
 		t.Errorf("click at (120, 100000): err = %v, want outside the viewport", err)
 	}
 }
+
+func TestTapAtAPointTouchesThereAndClicks(t *testing.T) {
+	t.Parallel()
+	site := dsl.NewSite(t)
+	agent := dsl.NewAgent(t)
+	agent.Open(site.URL("/pad.html"))
+	agent.TapAt(120, 80)
+	want := []pointerEvent{
+		{"pointerdown", 120, 80, "touch", true},
+		{"pointerup", 120, 80, "touch", true},
+		{"click", 120, 80, "touch", true},
+	}
+	if got := pointerEvents(t, agent); !slices.Equal(got, want) {
+		t.Errorf("events after a tap at (120, 80):\n got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestTapOnAnElementTouchesItsCentre(t *testing.T) {
+	t.Parallel()
+	site := dsl.NewSite(t)
+	agent := dsl.NewAgent(t)
+	agent.Open(site.URL("/pad.html"))
+	agent.Tap(dsl.CSS("#spot"))
+	// #spot spans 200-260 by 100-140.
+	want := []pointerEvent{
+		{"pointerdown", 230, 120, "touch", true},
+		{"pointerup", 230, 120, "touch", true},
+		{"click", 230, 120, "touch", true},
+	}
+	if got := pointerEvents(t, agent); !slices.Equal(got, want) {
+		t.Errorf("events after a tap on #spot:\n got %+v\nwant %+v", got, want)
+	}
+}
