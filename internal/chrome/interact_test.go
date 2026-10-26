@@ -182,6 +182,14 @@ func TestClickAtAPointOutsideTheViewportFails(t *testing.T) {
 	}
 }
 
+func TestClickAtTheViewportsTopLeftCornerIsInside(t *testing.T) {
+	t.Parallel()
+	b, _ := openActPage(t)
+	for _, at := range []browser.Point{{X: 0, Y: 10}, {X: 10, Y: 0}} {
+		interact(t, b, browser.InteractRequest{Action: browser.Click, At: &at})
+	}
+}
+
 func TestTapTouchesTheElementOrThePoint(t *testing.T) {
 	t.Parallel()
 	b, _ := openActPage(t)
