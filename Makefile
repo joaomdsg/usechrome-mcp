@@ -6,13 +6,18 @@ tool = go tool -modfile=devtools/$(1)/go.mod $(1)
 BIN := dist/usechrome-mcp
 COMMITS ?= origin/main..HEAD
 BASE ?= origin/main
+# The weekly flake check runs each acceptance test this many times.
+COUNT ?= 1
+# The weekly full mutation run fails below this efficacy. Raise it as
+# survivors get killed; it was 81.5% when set.
+MUTATION_FLOOR ?= 81
 # The pipeline sets the tag on a release run; .goreleaser.yaml builds with
 # the same flags, so the release reproduces the tested binary.
 VERSION ?= dev
 IMAGE ?= usechrome-mcp:acceptance
 PLATFORM := linux/$(shell go env GOARCH)
 
-.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows release-check release commit-messages squash-message acceptance acceptance-image mutation readme
+.PHONY: commit-stage build tidy vet test coverage lint vuln secrets workflows release-check release commit-messages squash-message acceptance acceptance-image mutation mutation-full readme
 
 commit-stage: build tidy vet test coverage lint vuln secrets workflows release-check
 
@@ -62,7 +67,7 @@ squash-message:
 	scripts/check-commit-messages.sh -m "$$(scripts/squash-subject.sh "$$PR_TITLE")"
 
 acceptance:
-	USECHROME_MCP_BIN=$(CURDIR)/$(BIN) go test -tags acceptance -count=1 -timeout 5m -v ./acceptance/...
+	USECHROME_MCP_BIN=$(CURDIR)/$(BIN) go test -tags acceptance -count=$(COUNT) -timeout $$((5 * $(COUNT)))m -v ./acceptance/...
 
 # Builds the release image around $(BIN), in the context layout GoReleaser
 # uses, and runs the acceptance tests against it.
@@ -71,7 +76,7 @@ acceptance-image:
 	mkdir -p dist/image/$(PLATFORM)
 	cp $(BIN) dist/image/$(PLATFORM)/
 	docker build --platform $(PLATFORM) -t $(IMAGE) -f Dockerfile dist/image
-	USECHROME_MCP_BIN=$(CURDIR)/scripts/run-image.sh USECHROME_MCP_IMAGE=$(IMAGE) go test -tags acceptance -count=1 -timeout 5m -v ./acceptance/...
+	USECHROME_MCP_BIN=$(CURDIR)/scripts/run-image.sh USECHROME_MCP_IMAGE=$(IMAGE) go test -tags acceptance -count=$(COUNT) -timeout $$((5 * $(COUNT)))m -v ./acceptance/...
 
 # The threshold is the gomutants Action's default, which "gates on any LIVED
 # mutant" (github.com/gomutants/gomutants/blob/v0.7.2/action.yml). The report
@@ -79,7 +84,14 @@ acceptance-image:
 mutation:
 	report=$$(mktemp); \
 	$(call tool,gomutants) -w 4 --cache=off --changed-since $(BASE) --test-flags="-parallel=1 -failfast" --annotations github --threshold-efficacy 100 -o "$$report" ./cmd/... ./internal/...; \
-	status=$$?; scripts/list-timed-out.sh "$$report"; rm -f "$$report"; exit $$status
+	status=$$?; scripts/list-mutants.sh "$$report" "TIMED OUT"; rm -f "$$report"; exit $$status
+
+# Every mutant in the code, not only the changed lines. The report stays at
+# $$MUTATION_REPORT, or a temporary file, for the weekly workflow to upload.
+mutation-full:
+	report=$${MUTATION_REPORT:-$$(mktemp)}; \
+	$(call tool,gomutants) -w 4 --cache=off --test-flags="-parallel=1 -failfast" --threshold-efficacy $(MUTATION_FLOOR) -o "$$report" ./cmd/... ./internal/...; \
+	status=$$?; scripts/list-mutants.sh "$$report" LIVED "TIMED OUT"; echo "report: $$report"; exit $$status
 
 readme:
 	go test ./cmd/usechrome-mcp -run TestReadme -count=1 -update
