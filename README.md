@@ -18,7 +18,7 @@ Protocol, so it needs no Node.js, no WebDriver and no browser extension.
 | open a page, go back, forward or reload | `navigate` |
 | read what is on the page, with refs to act on | `snapshot` |
 | see the page or one element | `screenshot` |
-| click, hover, type, press keys, pick options | `interact` |
+| click, tap, hover, type, press keys, pick options; click or tap at a point | `interact` |
 | run JavaScript in the page | `eval` |
 | read what the page logged and threw | `console` |
 | list the requests and read one in full | `network` |
