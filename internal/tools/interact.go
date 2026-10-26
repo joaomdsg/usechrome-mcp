@@ -17,11 +17,11 @@ type Interacter interface {
 
 // InteractInput is the arguments of the interact tool.
 type InteractInput struct {
-	Action   string   `json:"action" jsonschema:"what to do: click, hover, type, press or select"`
+	Action   string   `json:"action" jsonschema:"what to do: click, tap, hover, type, press or select"`
 	Ref      string   `json:"ref,omitempty" jsonschema:"ref of the element from the snapshot tool, such as e12"`
 	Selector string   `json:"selector,omitempty" jsonschema:"CSS selector of the element, instead of a ref"`
-	X        *float64 `json:"x,omitempty" jsonschema:"for click: CSS pixels from the viewport's left edge, with y and instead of an element"`
-	Y        *float64 `json:"y,omitempty" jsonschema:"for click: CSS pixels from the viewport's top edge, with x and instead of an element"`
+	X        *float64 `json:"x,omitempty" jsonschema:"for click and tap: CSS pixels from the viewport's left edge, with y and instead of an element"`
+	Y        *float64 `json:"y,omitempty" jsonschema:"for click and tap: CSS pixels from the viewport's top edge, with x and instead of an element"`
 	Text     string   `json:"text,omitempty" jsonschema:"for type: the text, which replaces the element's content; empty clears it"`
 	Key      string   `json:"key,omitempty" jsonschema:"for press: a key such as Enter, Tab, ArrowDown or Control+a"`
 	Option   string   `json:"option,omitempty" jsonschema:"for select: the value or label of the option to pick"`
@@ -51,6 +51,7 @@ var gestureArg = map[browser.Gesture]struct {
 	takesPoint   bool
 }{
 	browser.Click:  {"", true, true},
+	browser.Tap:    {"", true, true},
 	browser.Hover:  {"", true, false},
 	browser.Type:   {"text", false, false},
 	browser.Press:  {"key", false, false},
@@ -151,14 +152,15 @@ func (in InteractInput) argument(g browser.Gesture) (string, error) {
 func interactTool() *mcp.Tool {
 	in := inputSchema[InteractInput]()
 	in.Properties["action"].Enum = []any{
-		string(browser.Click), string(browser.Hover), string(browser.Type), string(browser.Press), string(browser.Select),
+		string(browser.Click), string(browser.Tap), string(browser.Hover), string(browser.Type), string(browser.Press), string(browser.Select),
 	}
 	return &mcp.Tool{
 		Name: "interact",
-		Description: "Act on an element as a person would: click, hover, type, press a key or select an option. " +
+		Description: "Act on an element as a person would: click, tap, hover, type, press a key or select an option. " +
 			"Name the element by its ref from the snapshot tool, such as e12, or by a CSS selector. " +
 			"click and hover scroll the element into view and use the mouse at its centre; they fail if it is disabled, hidden or covered. " +
-			"click can instead take x and y, CSS pixels from the viewport's top-left corner, and clicks whatever is there; it fails if the point is outside the viewport. " +
+			"tap does the same with a finger, sending real touch input. " +
+			"click and tap can instead take x and y, CSS pixels from the viewport's top-left corner, and hit whatever is there; they fail if the point is outside the viewport. " +
 			"type replaces the element's content key by key, or types at the focus when no element is named. " +
 			"press sends a key to the element, or else to the focus. select picks an option of a <select> by value or label. " +
 			"When the action starts a navigation, the call waits for the new page to load. JavaScript dialogs are accepted and listed, and so are the tabs the action opened.",

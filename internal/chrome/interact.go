@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/chromedp/cdproto/input"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 
@@ -44,6 +45,8 @@ func act(ctx context.Context, req browser.InteractRequest) error {
 	switch req.Action {
 	case browser.Click, browser.Hover:
 		problem, err = point(ctx, el, req.Action, req.At)
+	case browser.Tap:
+		problem, err = tap(ctx, el, req.At)
 	case browser.Type:
 		problem, err = typeText(ctx, el, req.Text)
 	case browser.Press:
@@ -114,6 +117,23 @@ func point(ctx context.Context, el runtime.RemoteObjectID, g browser.Gesture, at
 		actions = append(actions, chromedp.MouseClickXY(s.X, s.Y))
 	}
 	return "", chromedp.Do(ctx, actions...)
+}
+
+// tap touches the element, or at, with one finger and lifts it.
+func tap(ctx context.Context, el runtime.RemoteObjectID, at *browser.Point) (string, error) {
+	s, err := aim(ctx, el, browser.Tap, at)
+	if err != nil || s.Problem != "" {
+		return s.Problem, err
+	}
+	for _, p := range []input.DispatchTouchEventParams{
+		{Type: input.DispatchTouchEventTypeTouchStart, TouchPoints: []*input.TouchPoint{{X: s.X, Y: s.Y}}},
+		{Type: input.DispatchTouchEventTypeTouchEnd, TouchPoints: []*input.TouchPoint{}},
+	} {
+		if _, err := chromedp.Call(ctx, input.DispatchTouchEvent, p); err != nil {
+			return "", err
+		}
+	}
+	return "", nil
 }
 
 // aim finds where a gesture lands: at, checked only for being in the

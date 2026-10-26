@@ -48,6 +48,21 @@ func (a *Agent) TryClickAt(x, y float64) error {
 	return a.try("interact", map[string]any{"action": "click", "x": x, "y": y})
 }
 
+// Tap taps el with a finger.
+func (a *Agent) Tap(el Element) After {
+	a.t.Helper()
+	return a.interact(el, "tap", "", "")
+}
+
+// TapAt taps with a finger at x, y in CSS pixels from the viewport's top-left
+// corner, on whatever is there.
+func (a *Agent) TapAt(x, y float64) After {
+	a.t.Helper()
+	var after After
+	a.call("interact", map[string]any{"action": "tap", "x": x, "y": y}, &after)
+	return after
+}
+
 // TryClick is Click for a click expected to fail; it returns the failure.
 func (a *Agent) TryClick(el Element) error {
 	a.t.Helper()

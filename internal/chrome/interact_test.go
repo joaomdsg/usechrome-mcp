@@ -182,6 +182,40 @@ func TestClickAtAPointOutsideTheViewportFails(t *testing.T) {
 	}
 }
 
+func TestTapTouchesTheElementOrThePoint(t *testing.T) {
+	t.Parallel()
+	b, _ := openActPage(t)
+	evalValue(t, b, "count.addEventListener('pointerdown', e => count.dataset.by = e.pointerType)")
+	interact(t, b, browser.InteractRequest{Action: browser.Tap, Selector: "#count"})
+	var at browser.Point
+	if err := json.Unmarshal([]byte(evalValue(t, b, "(r => ({X: r.x + 1, Y: r.y + 1}))(count.getBoundingClientRect())")), &at); err != nil {
+		t.Fatal(err)
+	}
+	interact(t, b, browser.InteractRequest{Action: browser.Tap, At: &at})
+	if got := evalValue(t, b, "[count.textContent, count.dataset.by]"); got != `["2","touch"]` {
+		t.Errorf("[count, pointer type] after two taps = %s, want [\"2\",\"touch\"]", got)
+	}
+}
+
+func TestTapRefusesWhatAPersonCouldNotTap(t *testing.T) {
+	t.Parallel()
+	b, _ := openActPage(t)
+	for _, tc := range []struct {
+		req  browser.InteractRequest
+		want string
+	}{
+		{browser.InteractRequest{Action: browser.Tap, Selector: "#off"}, `"#off" is disabled`},
+		{browser.InteractRequest{Action: browser.Tap, Selector: "#hidden"}, `"#hidden" is not visible`},
+		{browser.InteractRequest{Action: browser.Tap, Selector: "#covered"}, `"#covered" is covered by div#lid`},
+		{browser.InteractRequest{Action: browser.Tap}, "tap needs a ref or a selector"},
+		{browser.InteractRequest{Action: browser.Tap, At: &browser.Point{X: -1, Y: 0}}, "is outside the viewport"},
+	} {
+		if _, err := b.Interact(t.Context(), tc.req); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("interact %+v: err = %v, want %q", tc.req, err, tc.want)
+		}
+	}
+}
+
 func TestClickOnStyledCheckboxReachesItsControl(t *testing.T) {
 	t.Parallel()
 	b, _ := openActPage(t)

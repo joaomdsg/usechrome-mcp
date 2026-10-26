@@ -47,6 +47,8 @@ func TestInteractPassesEachActionsArgument(t *testing.T) {
 		{map[string]any{"action": "select", "selector": "#plan", "option": "Pro"}, browser.InteractRequest{Action: browser.Select, Selector: "#plan", Text: "Pro"}},
 		{map[string]any{"action": "click", "x": 120.5, "y": 80}, browser.InteractRequest{Action: browser.Click, At: &browser.Point{X: 120.5, Y: 80}}},
 		{map[string]any{"action": "click", "x": 0, "y": 0}, browser.InteractRequest{Action: browser.Click, At: &browser.Point{}}},
+		{map[string]any{"action": "tap", "ref": "e5"}, browser.InteractRequest{Action: browser.Tap, Ref: "e5"}},
+		{map[string]any{"action": "tap", "x": 3, "y": 4}, browser.InteractRequest{Action: browser.Tap, At: &browser.Point{X: 3, Y: 4}}},
 	} {
 		in := &fakeInteracter{}
 		res := call(t, interactSession(t, in), "interact", tc.args)
@@ -82,6 +84,7 @@ func TestInteractRejectsArgumentsTheActionDoesNotTake(t *testing.T) {
 		want string
 	}{
 		{map[string]any{"action": "click"}, "click needs a ref or a selector, or x and y"},
+		{map[string]any{"action": "tap"}, "tap needs a ref or a selector, or x and y"},
 		{map[string]any{"action": "select", "option": "Pro"}, "select needs a ref or a selector"},
 		{map[string]any{"action": "click", "ref": "e1", "selector": "#a"}, "not both"},
 		{map[string]any{"action": "click", "ref": "e1", "text": "x"}, "click takes no text"},
@@ -110,6 +113,7 @@ func TestInteractRejectsXWithoutYAndYWithoutX(t *testing.T) {
 	for _, args := range []map[string]any{
 		{"action": "click", "x": 1},
 		{"action": "click", "y": 0},
+		{"action": "tap", "x": 1},
 	} {
 		in := &fakeInteracter{}
 		res := call(t, interactSession(t, in), "interact", args)
@@ -124,6 +128,7 @@ func TestInteractRejectsAPointTogetherWithAnElement(t *testing.T) {
 	for _, args := range []map[string]any{
 		{"action": "click", "ref": "e1", "x": 1, "y": 2},
 		{"action": "click", "selector": "#a", "x": 1, "y": 2},
+		{"action": "tap", "ref": "e1", "x": 1, "y": 2},
 	} {
 		in := &fakeInteracter{}
 		res := call(t, interactSession(t, in), "interact", args)

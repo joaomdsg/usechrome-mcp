@@ -6,8 +6,9 @@
 <style>
   body { margin: 0; }
   #pad { position: fixed; inset: 0; }
+  #spot { position: absolute; left: 200px; top: 100px; width: 60px; height: 40px; }
 </style>
-<div id="pad"></div>
+<div id="pad"><button id="spot">Spot</button></div>
 <script>
   // Each pointer event the pad saw, as JSON for the eval tool to read.
   const seen = [];

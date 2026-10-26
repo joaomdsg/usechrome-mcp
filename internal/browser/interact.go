@@ -6,6 +6,7 @@ type Gesture string
 // The gestures a tab supports.
 const (
 	Click  Gesture = "click"
+	Tap    Gesture = "tap"
 	Hover  Gesture = "hover"
 	Type   Gesture = "type"
 	Press  Gesture = "press"
@@ -14,8 +15,8 @@ const (
 
 // InteractRequest asks a tab to act on an element as a person would. The
 // element is Ref, a ref from a snapshot, or the element Selector picks. With
-// neither, Type and Press go to the focused element, and Click goes to At, a
-// point in the viewport, whatever is there. Text is what Type types, the key
+// neither, Type and Press go to the focused element, and Click and Tap go to
+// At, a point in the viewport, whatever is there. Text is what Type types, the key
 // Press presses, such as Enter or Control+a, or the option Select picks by
 // value or label.
 type InteractRequest struct {
