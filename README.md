@@ -284,6 +284,15 @@ loses its trailing ` in /<directory>`
    reproducible, so the release fails unless its linux/amd64 build is
    byte-identical to the binary the acceptance stage tested.
 
+A [weekly workflow](.github/workflows/weekly.yml) runs on `main` every Monday
+at 06:47 UTC with checks too slow or too noisy for a pull request:
+`flakes / acceptance` and `flakes / acceptance-image` run each acceptance test
+10 times and fail on any one failure, and `mutation / full` mutates all the
+code, lists each LIVED and TIMED OUT mutant, uploads the report, and fails
+below 81% efficacy. That floor was set at the 81.5% of its first run, mostly
+short of 100% in `internal/chrome`, which only the acceptance tests exercise;
+raise it in the [Makefile](Makefile) as survivors get killed.
+
 The linter also holds the architecture in place. The tools see the browser only
 through the plain types in `internal/browser`. The chromedp adapter in
 `internal/chrome` knows nothing of MCP. Only `main` wires the two together. The
@@ -299,6 +308,7 @@ make commit-stage      # build, test, coverage, lint, vulnerabilities, secrets, 
 make acceptance        # the acceptance tests against dist/usechrome-mcp
 make acceptance-image  # the same tests inside the release image; needs Docker
 make mutation          # mutation testing of the lines changed since origin/main
+make mutation-full     # mutation testing of all the code; about 95 minutes
 make readme            # rewrite the reference above after changing a flag or a tool
 ```
 

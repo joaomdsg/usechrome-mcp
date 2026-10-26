@@ -1,0 +1,54 @@
+# Checks too slow or too noisy for every pull request, run on main each
+# Monday. A workflow of their own, so a run of several hours never holds up
+# the pipeline's runs on main, which share one concurrency group.
+name: weekly
+
+on:
+  schedule:
+    - cron: "47 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flakes:
+    # Each acceptance test 10 times; one failure fails the job, so a timing
+    # assertion that a loaded runner can break shows up here first.
+    name: flakes / ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [acceptance, acceptance-image]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make build ${{ matrix.target }} COUNT=10
+
+  mutation:
+    name: mutation / full
+    runs-on: ubuntu-24.04
+    # 95 minutes on a 28-core workstation with the same 4 workers; the
+    # runner's limit is 6 hours.
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            devtools/*/go.sum
+      - run: make mutation-full
+        env:
+          MUTATION_REPORT: ${{ runner.temp }}/mutation.json
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-report
+          path: ${{ runner.temp }}/mutation.json
+          if-no-files-found: ignore
