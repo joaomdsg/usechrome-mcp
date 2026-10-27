@@ -136,7 +136,7 @@ func TestNetLogKeepsTheLastThousandRequests(t *testing.T) {
 		netlogSent(l, network.RequestID(fmt.Sprint(i)), url(i), 1, nil)
 	}
 	if got := netlogRequests(l); len(got) != 1000 || got[0].URL != url(0) {
-		t.Fatalf("at 1000: %d rows, first %q; want 1000, %q", len(got), got[0].URL, url(0))
+		t.Fatalf("at 1000: %d rows; want 1000, the first %q", len(got), url(0))
 	}
 	netlogSent(l, "1000", url(1000), 1, nil)
 	if got := netlogRequests(l); len(got) != 1000 || got[0].URL != url(1) || got[999].URL != url(1000) {
