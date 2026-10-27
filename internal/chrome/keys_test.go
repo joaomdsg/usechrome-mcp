@@ -10,8 +10,25 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
+func TestParseKeyStopsAfterTheLastModifier(t *testing.T) {
+	done := make(chan rune, 1)
+	go func() {
+		r, _, _ := parseKey("Control+Shift+a")
+		done <- r
+	}()
+	// A loop that never shrinks name spins forever, so bound it. First in the
+	// file: the unbounded parseKey tests below would spin before this ran.
+	select {
+	case r := <-done:
+		if r != 'a' {
+			t.Errorf("parseKey(%q) = %q, want %q", "Control+Shift+a", r, 'a')
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("parseKey(%q) did not return", "Control+Shift+a")
+	}
+}
+
 func TestParseKeyReadsNamesCharactersAndModifiers(t *testing.T) {
-	t.Parallel()
 	for in, want := range map[string]struct {
 		r    rune
 		mods []chromedp.Modifier
@@ -36,7 +53,6 @@ func TestParseKeyReadsNamesCharactersAndModifiers(t *testing.T) {
 }
 
 func TestParseKeyRejectsUnknownNames(t *testing.T) {
-	t.Parallel()
 	for in, want := range map[string]string{
 		"Hyper+a": "unknown modifier",
 		"a+b":     "unknown modifier",
@@ -51,7 +67,6 @@ func TestParseKeyRejectsUnknownNames(t *testing.T) {
 }
 
 func TestParseKeyErrorNamesTheWholeUnparsedKey(t *testing.T) {
-	t.Parallel()
 	for in, want := range map[string]string{
 		"a+":             `unknown key "a+"`,
 		"+a":             `unknown key "+a"`,
@@ -70,26 +85,7 @@ func TestParseKeyErrorNamesTheWholeUnparsedKey(t *testing.T) {
 	}
 }
 
-func TestParseKeyStopsAfterTheLastModifier(t *testing.T) {
-	done := make(chan rune, 1)
-	go func() {
-		r, _, _ := parseKey("Control+Shift+a")
-		done <- r
-	}()
-	// A loop that never shrinks name spins forever, so bound it; panic rather
-	// than t.Fatal because the parallel parseKey tests would then spin too.
-	select {
-	case r := <-done:
-		if r != 'a' {
-			t.Errorf("parseKey(%q) = %q, want %q", "Control+Shift+a", r, 'a')
-		}
-	case <-time.After(100 * time.Millisecond):
-		panic("parseKey(\"Control+Shift+a\") did not return")
-	}
-}
-
 func TestKeyNamesHoldsMultiRuneKeysOnly(t *testing.T) {
-	t.Parallel()
 	for _, name := range []string{"f5", "enter", "arrowdown"} {
 		if _, ok := keyNames[name]; !ok {
 			t.Errorf("keyNames[%q] missing", name)

@@ -13,8 +13,9 @@ import (
 	"github.com/joaomdsg/usechrome-mcp/internal/browser"
 )
 
-// stylesHeaders yields one event per id, an error for an empty id, and
-// counts how many it handed out.
+// stylesHeaders stands in for Chrome's event stream, where pulling one event
+// too many blocks until another stylesheet loads; hence the count. An empty
+// id stands in for the stream failing.
 func stylesHeaders(pulled *int, ids ...cdp.StyleSheetID) iter.Seq2[css.EventStyleSheetAdded, error] {
 	return func(yield func(css.EventStyleSheetAdded, error) bool) {
 		for _, id := range ids {
@@ -33,7 +34,6 @@ func stylesHeaders(pulled *int, ids ...cdp.StyleSheetID) iter.Seq2[css.EventStyl
 }
 
 func TestSheetHeadersReadsOnlyUntilEveryNeededSheetArrived(t *testing.T) {
-	t.Parallel()
 	for name, tc := range map[string]struct {
 		need   []cdp.StyleSheetID
 		events []cdp.StyleSheetID
@@ -65,7 +65,6 @@ func TestSheetHeadersReadsOnlyUntilEveryNeededSheetArrived(t *testing.T) {
 }
 
 func TestSourceGivesSelectorLineOrBareURL(t *testing.T) {
-	t.Parallel()
 	sheet := &css.StyleSheetHeader{SourceURL: "https://a.test/s.css", StartLine: 10}
 	ranged := []*css.Value{{Text: "p", Range: &css.SourceRange{StartLine: 2}}}
 	unranged := []*css.Value{{Text: "p"}}
@@ -88,7 +87,6 @@ func TestSourceGivesSelectorLineOrBareURL(t *testing.T) {
 }
 
 func TestDeclarationsSkipsExpandedAndDisabledAndMarksImportant(t *testing.T) {
-	t.Parallel()
 	at := &css.SourceRange{}
 	got := declarations(&css.Style{CSSProperties: []*css.Property{
 		{Name: "margin-top", Value: "0"},
@@ -107,7 +105,6 @@ func TestDeclarationsSkipsExpandedAndDisabledAndMarksImportant(t *testing.T) {
 }
 
 func TestDeclaredPropertiesSortsAndDropsDuplicates(t *testing.T) {
-	t.Parallel()
 	got := declaredProperties([]browser.Rule{
 		{Declarations: []string{"width: 1px", "gap: 2px"}},
 		{Declarations: []string{"color: red", "gap: 3px"}},

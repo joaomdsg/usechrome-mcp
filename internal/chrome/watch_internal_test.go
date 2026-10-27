@@ -14,7 +14,6 @@ func watchClosed() <-chan struct{} {
 }
 
 func TestNavigatedReportsCommitOrSameDocumentNavigation(t *testing.T) {
-	t.Parallel()
 	for name, tc := range map[string]struct {
 		committed, sameDoc bool
 		want               bool
@@ -38,7 +37,6 @@ func TestNavigatedReportsCommitOrSameDocumentNavigation(t *testing.T) {
 }
 
 func TestOpenedAndPopupsReturnWhatWasRecorded(t *testing.T) {
-	t.Parallel()
 	w := &pageWatch{
 		dialogs: []string{"alert: hi"},
 		created: []target.ID{"T1"},

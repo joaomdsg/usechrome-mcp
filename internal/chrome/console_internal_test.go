@@ -11,7 +11,6 @@ import (
 )
 
 func TestConsoleMessageCutsExceptionStackAtTenFrames(t *testing.T) {
-	t.Parallel()
 	m := chromedp.ConsoleMessage{Type: chromedp.ConsoleException, Text: "Error: boom", Stack: &runtime.StackTrace{}}
 	var want []string
 	for i := range 11 {
@@ -26,7 +25,6 @@ func TestConsoleMessageCutsExceptionStackAtTenFrames(t *testing.T) {
 }
 
 func TestFrameNamesFunctionOnlyWhenItHasOne(t *testing.T) {
-	t.Parallel()
 	for _, c := range []struct {
 		f    runtime.CallFrame
 		want string
@@ -41,7 +39,6 @@ func TestFrameNamesFunctionOnlyWhenItHasOne(t *testing.T) {
 }
 
 func TestIsPlainObjectTakesOnlyObjectsAndArraysWithAnID(t *testing.T) {
-	t.Parallel()
 	for _, c := range []struct {
 		o    runtime.RemoteObject
 		want bool
@@ -60,7 +57,6 @@ func TestIsPlainObjectTakesOnlyObjectsAndArraysWithAnID(t *testing.T) {
 }
 
 func TestIsFormatTakesOnlyStringsWithAPercent(t *testing.T) {
-	t.Parallel()
 	for _, c := range []struct {
 		o    runtime.RemoteObject
 		want bool

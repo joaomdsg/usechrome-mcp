@@ -35,7 +35,6 @@ func axNode(id int, role, name string, children ...int) *accessibility.Node {
 func itoa(i int) string { b, _ := json.Marshal(i); return string(b) }
 
 func TestOutlineHoistsGroupingAndDropsRepeatedText(t *testing.T) {
-	t.Parallel()
 	ignored := axNode(6, "generic", "", 7)
 	ignored.Ignored = true
 	heading := axNode(3, "heading", "Title", 4)
@@ -66,7 +65,6 @@ func TestOutlineHoistsGroupingAndDropsRepeatedText(t *testing.T) {
 }
 
 func TestOutlineKeepsOffTogglesAndValues(t *testing.T) {
-	t.Parallel()
 	box := axNode(2, "checkbox", "Agree")
 	box.Properties = []*accessibility.Property{
 		prop(accessibility.PropertyNameDisabled, false),
@@ -92,7 +90,6 @@ func TestOutlineKeepsOffTogglesAndValues(t *testing.T) {
 }
 
 func TestOutlineStartsAtPickedElementEvenIfItOnlyGroups(t *testing.T) {
-	t.Parallel()
 	nodes := []*accessibility.Node{
 		axNode(1, "RootWebArea", "", 2, 4),
 		axNode(2, "generic", "", 3),
@@ -113,7 +110,6 @@ func TestOutlineStartsAtPickedElementEvenIfItOnlyGroups(t *testing.T) {
 }
 
 func TestOutlineDropsLabelAndValueEchoes(t *testing.T) {
-	t.Parallel()
 	field := axNode(4, "textbox", "Email", 5)
 	field.Value = val("a@b.c")
 	nodes := []*accessibility.Node{
@@ -133,7 +129,6 @@ func TestOutlineDropsLabelAndValueEchoes(t *testing.T) {
 }
 
 func TestOutlineOfEmptyTreeIsEmpty(t *testing.T) {
-	t.Parallel()
 	if got, err := outline(nil, 0); got != nil || err != nil {
 		t.Errorf("got %v, %v; want nothing", got, err)
 	}
@@ -145,7 +140,6 @@ func dump(nodes []*browser.Node) string {
 }
 
 func TestOutlineStartsAtFirstNodeWhenPicked(t *testing.T) {
-	t.Parallel()
 	got, err := outline([]*accessibility.Node{axNode(1, "button", "Go"), axNode(2, "RootWebArea", "", 1)}, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +150,6 @@ func TestOutlineStartsAtFirstNodeWhenPicked(t *testing.T) {
 }
 
 func TestOutlineHoistsIgnoredNodesButKeepsNamedGroups(t *testing.T) {
-	t.Parallel()
 	ignored := axNode(2, "button", "Hidden", 3)
 	ignored.Ignored = true
 	nodes := []*accessibility.Node{
@@ -180,7 +173,6 @@ func TestOutlineHoistsIgnoredNodesButKeepsNamedGroups(t *testing.T) {
 }
 
 func TestOutlineGivesNoRefToNodeWithoutDOMNode(t *testing.T) {
-	t.Parallel()
 	pseudo := axNode(2, "button", "Pseudo")
 	pseudo.BackendDOMNodeID = 0
 	got, err := outline([]*accessibility.Node{axNode(1, "RootWebArea", "", 2), pseudo}, 0)
@@ -193,7 +185,6 @@ func TestOutlineGivesNoRefToNodeWithoutDOMNode(t *testing.T) {
 }
 
 func TestOutlineDropsEmptyPropsAndBlankText(t *testing.T) {
-	t.Parallel()
 	field := axNode(2, "textbox", "Email")
 	field.Properties = []*accessibility.Property{prop(accessibility.PropertyNameInvalid, ""), prop(accessibility.PropertyNameChecked, "")}
 	got, err := outline([]*accessibility.Node{axNode(1, "RootWebArea", "", 2, 3), field, axNode(3, "StaticText", " \n ")}, 0)
