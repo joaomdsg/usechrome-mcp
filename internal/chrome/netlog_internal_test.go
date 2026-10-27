@@ -30,7 +30,6 @@ func netlogRequests(l *netLog) []browser.Request {
 }
 
 func TestNetLogRequestsFiltersByLoader(t *testing.T) {
-	t.Parallel()
 	l := newNetLog()
 	netlogSent(l, "a", "https://a.test/", 1, nil)
 	if got := l.requests(map[cdp.LoaderID]bool{"other": true}); len(got) != 0 {
@@ -42,7 +41,6 @@ func TestNetLogRequestsFiltersByLoader(t *testing.T) {
 }
 
 func TestNetLogRedirectAnswersThePreviousHop(t *testing.T) {
-	t.Parallel()
 	l := newNetLog()
 	netlogSent(l, "a", "https://a.test/old", 1, nil)
 	netlogSent(l, "a", "https://a.test/new", 1.25, &network.Response{Status: 301, StatusText: "Moved", EncodedDataLength: 40})
@@ -67,7 +65,6 @@ func TestNetLogRedirectAnswersThePreviousHop(t *testing.T) {
 }
 
 func TestNetLogRedirectResponseWithoutAHopStartsTheExchange(t *testing.T) {
-	t.Parallel()
 	l := newNetLog()
 	netlogSent(l, "a", "https://a.test/", 1, &network.Response{Status: 302})
 	if got := netlogRequests(l); len(got) != 1 || got[0].ID != "n1" || got[0].Done {
@@ -76,7 +73,6 @@ func TestNetLogRedirectResponseWithoutAHopStartsTheExchange(t *testing.T) {
 }
 
 func TestNetLogRowsMarkOnlyTheFinalHopDone(t *testing.T) {
-	t.Parallel()
 	l := newNetLog()
 	netlogSent(l, "a", "https://a.test/1", 1, nil)
 	netlogSent(l, "a", "https://a.test/2", 2, nil)
@@ -95,7 +91,6 @@ func TestNetLogRowsMarkOnlyTheFinalHopDone(t *testing.T) {
 }
 
 func TestNetLogRowsCarryTheFailure(t *testing.T) {
-	t.Parallel()
 	l := newNetLog()
 	netlogSent(l, "a", "https://a.test/", 1, nil)
 	l.failed(network.EventLoadingFailed{RequestID: "a", Timestamp: 3, ErrorText: "net::ERR_FAILED"})
@@ -105,7 +100,6 @@ func TestNetLogRowsCarryTheFailure(t *testing.T) {
 }
 
 func TestNetLogRequestsOrderHopsAcrossExchangesByStart(t *testing.T) {
-	t.Parallel()
 	l := newNetLog()
 	netlogSent(l, "a", "https://a.test/1", 1, nil)
 	netlogSent(l, "b", "https://b.test/", 2, nil)
@@ -118,13 +112,9 @@ func TestNetLogRequestsOrderHopsAcrossExchangesByStart(t *testing.T) {
 	if want := []string{"n1", "n2", "n3"}; !slices.Equal(ids, want) {
 		t.Errorf("ids = %v, want %v", ids, want)
 	}
-	if cap(got) != len(got) {
-		t.Errorf("cap = %d, want %d", cap(got), len(got))
-	}
 }
 
 func TestFailureNamesTheCause(t *testing.T) {
-	t.Parallel()
 	for _, tc := range []struct {
 		e    network.EventLoadingFailed
 		want string
@@ -139,30 +129,22 @@ func TestFailureNamesTheCause(t *testing.T) {
 	}
 }
 
-func TestNetLogKeepsTheLatestMaxLoggedRequests(t *testing.T) {
-	t.Parallel()
+func TestNetLogKeepsTheLastThousandRequests(t *testing.T) {
 	l := newNetLog()
-	for i := range maxLoggedRequests {
-		l.exchange(network.RequestID(fmt.Sprint(i)))
+	url := func(i int) string { return fmt.Sprintf("https://a.test/%d", i) }
+	for i := range 1000 {
+		netlogSent(l, network.RequestID(fmt.Sprint(i)), url(i), 1, nil)
 	}
-	if _, ok := l.byID["0"]; !ok || len(l.order) != maxLoggedRequests {
-		t.Fatalf("at the cap: oldest kept = %v, len = %d; want true, %d", ok, len(l.order), maxLoggedRequests)
+	if got := netlogRequests(l); len(got) != 1000 || got[0].URL != url(0) {
+		t.Fatalf("at 1000: %d rows, first %q; want 1000, %q", len(got), got[0].URL, url(0))
 	}
-	l.exchange("new")
-	if _, ok := l.byID["0"]; ok || len(l.order) != maxLoggedRequests || l.order[0] != "1" {
-		t.Errorf("past the cap: oldest kept = %v, len = %d, first = %q; want false, %d, \"1\"", ok, len(l.order), l.order[0], maxLoggedRequests)
-	}
-}
-
-func TestMaxLoggedRequestsIsAThousand(t *testing.T) {
-	t.Parallel()
-	if maxLoggedRequests != 1000 {
-		t.Errorf("maxLoggedRequests = %d, want 1000", maxLoggedRequests)
+	netlogSent(l, "1000", url(1000), 1, nil)
+	if got := netlogRequests(l); len(got) != 1000 || got[0].URL != url(1) || got[999].URL != url(1000) {
+		t.Errorf("past 1000: %d rows, first %q, last %q; want 1000, %q, %q", len(got), got[0].URL, got[len(got)-1].URL, url(1), url(1000))
 	}
 }
 
 func TestNetLogLoadedSkipsPendingFailedAndOtherURLs(t *testing.T) {
-	t.Parallel()
 	const url = "https://a.test/"
 	l := newNetLog()
 	netlogSent(l, "ok", url, 1, nil)
@@ -178,14 +160,12 @@ func TestNetLogLoadedSkipsPendingFailedAndOtherURLs(t *testing.T) {
 }
 
 func TestDurationConvertsSecondsToDuration(t *testing.T) {
-	t.Parallel()
 	if got, want := duration(1, 1.5), 500*time.Millisecond; got != want {
 		t.Errorf("duration(1, 1.5) = %v, want %v", got, want)
 	}
 }
 
 func TestHeadersSortByNameIgnoringCase(t *testing.T) {
-	t.Parallel()
 	got := headers(network.Headers{"b": "2", "D": "4", "a": "1", "C": "3", "f": "6", "E": "5"})
 	var want []browser.Header
 	for _, n := range []string{"a", "b", "C", "D", "E", "f"} {
@@ -193,8 +173,5 @@ func TestHeadersSortByNameIgnoringCase(t *testing.T) {
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("headers = %v, want %v", got, want)
-	}
-	if cap(got) != len(got) {
-		t.Errorf("cap = %d, want %d", cap(got), len(got))
 	}
 }

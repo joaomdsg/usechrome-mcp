@@ -26,7 +26,6 @@ func sourceTree() *page.FrameResourceTree {
 }
 
 func TestFindResourceReturnsDocumentsAndResourcesOfEveryFrame(t *testing.T) {
-	t.Parallel()
 	for url, want := range map[string]struct {
 		src   browser.Source
 		frame cdp.FrameID
@@ -44,7 +43,6 @@ func TestFindResourceReturnsDocumentsAndResourcesOfEveryFrame(t *testing.T) {
 }
 
 func TestFindResourceStopsWhenNoFrameHasTheURL(t *testing.T) {
-	t.Parallel()
 	src, frame, ok := sourceFind(t, "https://c.test/missing.js")
 	if ok || src != (browser.Source{}) || frame != "" {
 		t.Errorf("findResource(missing) = %+v, %q, %v; want zero, \"\", false", src, frame, ok)

@@ -10,7 +10,6 @@ import (
 )
 
 func TestCappedCutsEachSideAtMaxImageSide(t *testing.T) {
-	t.Parallel()
 	for name, tc := range map[string]struct {
 		in   region
 		want region
@@ -29,7 +28,6 @@ func TestCappedCutsEachSideAtMaxImageSide(t *testing.T) {
 }
 
 func TestDecodeImageReadsSizeAndRejectsGarbage(t *testing.T) {
-	t.Parallel()
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 3, 2))); err != nil {
 		t.Fatal(err)
