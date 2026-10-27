@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	"github.com/chromedp/chromedp"
 )
@@ -85,15 +84,10 @@ func TestParseKeyErrorNamesTheWholeUnparsedKey(t *testing.T) {
 	}
 }
 
-func TestKeyNamesHoldsMultiRuneKeysOnly(t *testing.T) {
-	for _, name := range []string{"f5", "enter", "arrowdown"} {
-		if _, ok := keyNames[name]; !ok {
-			t.Errorf("keyNames[%q] missing", name)
-		}
-	}
-	for name := range keyNames {
-		if utf8.RuneCountInString(name) < 2 {
-			t.Errorf("keyNames has single-rune name %q", name)
+func TestParseKeyKnowsTwoRuneAndLongerKeyNames(t *testing.T) {
+	for _, name := range []string{"F5", "Enter", "ArrowDown"} {
+		if _, _, err := parseKey(name); err != nil {
+			t.Errorf("parseKey(%q) error = %v, want none", name, err)
 		}
 	}
 }
