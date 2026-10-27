@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+	"unicode/utf8"
 
 	"github.com/chromedp/chromedp"
 )
@@ -44,6 +46,58 @@ func TestParseKeyRejectsUnknownNames(t *testing.T) {
 	} {
 		if _, _, err := parseKey(in); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("parseKey(%q) error = %v, want %q", in, err, want)
+		}
+	}
+}
+
+func TestParseKeyErrorNamesTheWholeUnparsedKey(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{
+		"a+":             `unknown key "a+"`,
+		"+a":             `unknown key "+a"`,
+		"++":             `unknown key "++"`,
+		"Shift+":         `unknown key "Shift+"`,
+		"Control+Shift+": `unknown key "Shift+"`,
+		"Hyper+a":        `unknown modifier "Hyper" in "Hyper+a"`,
+	} {
+		r, mods, err := parseKey(in)
+		if err == nil || !strings.HasPrefix(err.Error(), want) {
+			t.Errorf("parseKey(%q) error = %v, want prefix %q", in, err, want)
+		}
+		if r != 0 || mods != nil {
+			t.Errorf("parseKey(%q) = %q, %v on error; want 0, nil", in, r, mods)
+		}
+	}
+}
+
+func TestParseKeyStopsAfterTheLastModifier(t *testing.T) {
+	done := make(chan rune, 1)
+	go func() {
+		r, _, _ := parseKey("Control+Shift+a")
+		done <- r
+	}()
+	// A loop that never shrinks name spins forever, so bound it; panic rather
+	// than t.Fatal because the parallel parseKey tests would then spin too.
+	select {
+	case r := <-done:
+		if r != 'a' {
+			t.Errorf("parseKey(%q) = %q, want %q", "Control+Shift+a", r, 'a')
+		}
+	case <-time.After(100 * time.Millisecond):
+		panic("parseKey(\"Control+Shift+a\") did not return")
+	}
+}
+
+func TestKeyNamesHoldsMultiRuneKeysOnly(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"f5", "enter", "arrowdown"} {
+		if _, ok := keyNames[name]; !ok {
+			t.Errorf("keyNames[%q] missing", name)
+		}
+	}
+	for name := range keyNames {
+		if utf8.RuneCountInString(name) < 2 {
+			t.Errorf("keyNames has single-rune name %q", name)
 		}
 	}
 }

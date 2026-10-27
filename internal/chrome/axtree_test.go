@@ -143,3 +143,64 @@ func dump(nodes []*browser.Node) string {
 	b, _ := json.Marshal(nodes)
 	return string(b)
 }
+
+func TestOutlineStartsAtFirstNodeWhenPicked(t *testing.T) {
+	t.Parallel()
+	got, err := outline([]*accessibility.Node{axNode(1, "button", "Go"), axNode(2, "RootWebArea", "", 1)}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []*browser.Node{{Ref: "e1", Role: "button", Name: "Go"}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("outline:\n got %s\nwant %s", dump(got), dump(want))
+	}
+}
+
+func TestOutlineHoistsIgnoredNodesButKeepsNamedGroups(t *testing.T) {
+	t.Parallel()
+	ignored := axNode(2, "button", "Hidden", 3)
+	ignored.Ignored = true
+	nodes := []*accessibility.Node{
+		axNode(1, "RootWebArea", "", 2, 4),
+		ignored,
+		axNode(3, "link", "Shown"),
+		axNode(4, "generic", "Card", 5),
+		axNode(5, "button", "Open"),
+	}
+	got, err := outline(nodes, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []*browser.Node{
+		{Ref: "e3", Role: "link", Name: "Shown"},
+		{Ref: "e4", Role: "generic", Name: "Card", Children: []*browser.Node{{Ref: "e5", Role: "button", Name: "Open"}}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("outline:\n got %s\nwant %s", dump(got), dump(want))
+	}
+}
+
+func TestOutlineGivesNoRefToNodeWithoutDOMNode(t *testing.T) {
+	t.Parallel()
+	pseudo := axNode(2, "button", "Pseudo")
+	pseudo.BackendDOMNodeID = 0
+	got, err := outline([]*accessibility.Node{axNode(1, "RootWebArea", "", 2), pseudo}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []*browser.Node{{Role: "button", Name: "Pseudo"}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("outline:\n got %s\nwant %s", dump(got), dump(want))
+	}
+}
+
+func TestOutlineDropsEmptyPropsAndBlankText(t *testing.T) {
+	t.Parallel()
+	field := axNode(2, "textbox", "Email")
+	field.Properties = []*accessibility.Property{prop(accessibility.PropertyNameInvalid, ""), prop(accessibility.PropertyNameChecked, "")}
+	got, err := outline([]*accessibility.Node{axNode(1, "RootWebArea", "", 2, 3), field, axNode(3, "StaticText", " \n ")}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []*browser.Node{{Ref: "e2", Role: "textbox", Name: "Email"}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("outline:\n got %s\nwant %s", dump(got), dump(want))
+	}
+}
