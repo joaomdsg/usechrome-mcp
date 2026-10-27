@@ -291,9 +291,11 @@ at 06:47 UTC with checks too slow or too noisy for a pull request:
 `flakes / acceptance` and `flakes / acceptance-image` run each acceptance test
 10 times and fail on any one failure, and `mutation / full` mutates all the
 code, lists each LIVED and TIMED OUT mutant, uploads the report, and fails
-below 81% efficacy. That floor was set at the 81.5% of its first run, mostly
-short of 100% in `internal/chrome`, which only the acceptance tests exercise;
-raise it in the [Makefile](Makefile) as survivors get killed.
+when under 75% of the mutants are killed, counting TIMED OUT as survivors. The
+memory cap of gomutants#127 turned 374 `internal/chrome` mutants into TIMED OUT
+on its first run, which efficacy leaves out: that run scored 93.8% efficacy
+but 76.45% by this count, and 4h14m of the job's 5 hours. Raise the floor in
+the [Makefile](Makefile) as survivors get killed.
 
 The linter also holds the architecture in place. The tools see the browser only
 through the plain types in `internal/browser`. The chromedp adapter in

@@ -8,9 +8,11 @@ COMMITS ?= origin/main..HEAD
 BASE ?= origin/main
 # The weekly flake check runs each acceptance test this many times.
 COUNT ?= 1
-# The weekly full mutation run fails below this efficacy. Raise it as
-# survivors get killed; it was 81.5% when set.
-MUTATION_FLOOR ?= 81
+# The weekly full mutation run fails below this share of mutants killed,
+# with TIMED OUT counted as survivors (scripts/mutation-score.sh). Its first
+# CI run scored 76.45%; how many mutants the memory cap kills varies from run
+# to run, hence the margin. Raise it as survivors get killed.
+MUTATION_FLOOR ?= 75
 # The pipeline sets the tag on a release run; .goreleaser.yaml builds with
 # the same flags, so the release reproduces the tested binary.
 VERSION ?= dev
@@ -90,8 +92,9 @@ mutation:
 # $$MUTATION_REPORT, or a temporary file, for the weekly workflow to upload.
 mutation-full:
 	report=$${MUTATION_REPORT:-$$(mktemp)}; \
-	$(call tool,gomutants) -w 4 --cache=off --test-flags="-parallel=1 -failfast" --threshold-efficacy $(MUTATION_FLOOR) -o "$$report" ./cmd/... ./internal/...; \
-	status=$$?; scripts/list-mutants.sh "$$report" LIVED "TIMED OUT"; echo "report: $$report"; exit $$status
+	$(call tool,gomutants) -w 4 --cache=off --test-flags="-parallel=1 -failfast" -o "$$report" ./cmd/... ./internal/... || exit; \
+	scripts/list-mutants.sh "$$report" LIVED "TIMED OUT"; echo "report: $$report"; \
+	scripts/mutation-score.sh "$$report" $(MUTATION_FLOOR)
 
 readme:
 	go test ./cmd/usechrome-mcp -run TestReadme -count=1 -update
