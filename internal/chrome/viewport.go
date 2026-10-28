@@ -18,9 +18,10 @@ const viewportJS = `({Width: innerWidth, Height: innerHeight, Scale: devicePixel
 const measureViewportJS = `new Promise(done => requestAnimationFrame(() => done(` + viewportJS + `)))`
 
 // settleViewportJS waits until the page sees a size other than was, or 10
-// frames, for a change that keeps the size, as a reset with no override does. The renderer applies an override or reset some frames
-// after the CDP call returns: read at once, the old size showed about one
-// time in four, and one frame later it still showed on a loaded CI runner.
+// frames for a change that keeps the size, as a reset with no override
+// does. The renderer applies an override or reset some frames after the CDP
+// call returns: read at once, the old size showed about one time in four,
+// and one frame later it still showed on a loaded CI runner.
 const settleViewportJS = `was => new Promise(done => {
 	let frames = 0;
 	const check = () => {
