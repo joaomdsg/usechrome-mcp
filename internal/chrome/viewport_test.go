@@ -55,6 +55,19 @@ func TestViewportResetRestoresWindowSize(t *testing.T) {
 	}
 }
 
+func TestViewportChangeThatKeepsTheSizeStillAnswers(t *testing.T) {
+	t.Parallel()
+	b := newBrowser(t)
+	before := viewport(t, b, browser.ViewportRequest{})
+	if got := viewport(t, b, browser.ViewportRequest{Reset: true}); got != before {
+		t.Errorf("reset with no override got %+v, want %+v", got, before)
+	}
+	same := browser.ViewportRequest{Width: before.Width, Height: before.Height, Scale: before.Scale}
+	if got := viewport(t, b, same); got != before {
+		t.Errorf("override to the current size got %+v, want %+v", got, before)
+	}
+}
+
 func TestViewportMobileEmulatesTouch(t *testing.T) {
 	t.Parallel()
 	srv := site(t)
