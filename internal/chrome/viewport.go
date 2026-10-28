@@ -76,7 +76,8 @@ func setTouch(ctx context.Context, on bool) error {
 	return err
 }
 
-// changeViewport applies req and reports the size once the page sees it.
+// changeViewport measures before applying req, since the page only shows
+// the change some frames later and settling needs the old size to spot it.
 func changeViewport(ctx context.Context, req browser.ViewportRequest) (browser.Viewport, error) {
 	was, err := chromedp.Run(ctx, chromedp.Evaluate[browser.Viewport](viewportJS))
 	if err == nil {
