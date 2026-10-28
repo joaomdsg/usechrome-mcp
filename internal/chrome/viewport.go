@@ -36,19 +36,12 @@ const settleViewportJS = `was => new Promise(done => {
 func (b *Browser) Viewport(ctx context.Context, req browser.ViewportRequest) (browser.Viewport, error) {
 	var vp browser.Viewport
 	err := b.do(ctx, req.Tab, func(tctx context.Context) error {
+		var err error
 		if !req.Reset && !req.Overrides() {
-			var err error
 			vp, err = chromedp.Run(tctx, chromedp.Evaluate[browser.Viewport](measureViewportJS, chromedp.EvalAwaitPromise))
-			return err
+		} else {
+			vp, err = changeViewport(tctx, req)
 		}
-		was, err := chromedp.Run(tctx, chromedp.Evaluate[browser.Viewport](viewportJS))
-		if err != nil {
-			return err
-		}
-		if err := applyViewport(tctx, req); err != nil {
-			return err
-		}
-		vp, err = settleViewport(tctx, was)
 		return err
 	})
 	return vp, err
@@ -80,6 +73,18 @@ func applyViewport(ctx context.Context, req browser.ViewportRequest) error {
 func setTouch(ctx context.Context, on bool) error {
 	_, err := chromedp.Call(ctx, emulation.SetTouchEmulationEnabled, emulation.SetTouchEmulationEnabledParams{Enabled: on})
 	return err
+}
+
+// changeViewport applies req and reports the size once the page sees it.
+func changeViewport(ctx context.Context, req browser.ViewportRequest) (browser.Viewport, error) {
+	was, err := chromedp.Run(ctx, chromedp.Evaluate[browser.Viewport](viewportJS))
+	if err == nil {
+		err = applyViewport(ctx, req)
+	}
+	if err == nil {
+		was, err = settleViewport(ctx, was)
+	}
+	return was, err
 }
 
 func settleViewport(ctx context.Context, was browser.Viewport) (browser.Viewport, error) {
