@@ -55,6 +55,56 @@ func TestViewportResetRestoresWindowSize(t *testing.T) {
 	}
 }
 
+func TestViewportChangeThatKeepsTheSizeStillAnswers(t *testing.T) {
+	t.Parallel()
+	b := newBrowser(t)
+	before := viewport(t, b, browser.ViewportRequest{})
+	if got := viewport(t, b, browser.ViewportRequest{Reset: true}); got != before {
+		t.Errorf("reset with no override got %+v, want %+v", got, before)
+	}
+	same := browser.ViewportRequest{Width: before.Width, Height: before.Height, Scale: before.Scale}
+	if got := viewport(t, b, same); got != before {
+		t.Errorf("override to the current size got %+v, want %+v", got, before)
+	}
+}
+
+// staleSizeJS makes the page report 123x77 for its next 5 frames, as a
+// renderer that applies a change late does.
+const staleSizeJS = `(() => {
+	let frames = 0;
+	const tick = () => { frames++; requestAnimationFrame(tick); };
+	requestAnimationFrame(tick);
+	for (const [name, stale] of [["innerWidth", 123], ["innerHeight", 77]]) {
+		const real = Object.getOwnPropertyDescriptor(window, name).get;
+		Object.defineProperty(window, name, {get: () => frames < 5 ? stale : real.call(window), configurable: true});
+	}
+})()`
+
+func TestViewportChangeWaitsForThePageToSeeIt(t *testing.T) {
+	t.Parallel()
+	b := newBrowser(t)
+	evalValue(t, b, staleSizeJS)
+	if got := viewport(t, b, browser.ViewportRequest{Width: 400, Height: 300}); got.Width != 400 || got.Height != 300 {
+		t.Errorf("got %+v, want 400x300 once the page sees it", got)
+	}
+}
+
+func TestViewportReadReportsThePageWithoutWaiting(t *testing.T) {
+	t.Parallel()
+	b := newBrowser(t)
+	evalValue(t, b, staleSizeJS)
+	if got := viewport(t, b, browser.ViewportRequest{}); got.Width != 123 || got.Height != 77 {
+		t.Errorf("got %+v, want 123x77, what the page reports now", got)
+	}
+}
+
+func TestViewportRejectsASizeChromeRefuses(t *testing.T) {
+	t.Parallel()
+	if _, err := newBrowser(t).Viewport(t.Context(), browser.ViewportRequest{Width: 100, Height: -5}); err == nil {
+		t.Error("viewport 100x-5: got no error")
+	}
+}
+
 func TestViewportMobileEmulatesTouch(t *testing.T) {
 	t.Parallel()
 	srv := site(t)

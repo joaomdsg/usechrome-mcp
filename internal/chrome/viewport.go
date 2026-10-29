@@ -2,6 +2,7 @@ package chrome
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/emulation"
@@ -10,22 +11,38 @@ import (
 	"github.com/joaomdsg/usechrome-mcp/internal/browser"
 )
 
-// The keys match browser.Viewport's fields, so the result decodes as is. It
-// waits a frame because the renderer applies an override or reset after the
-// CDP call returns; read at once, the old size shows about one time in four.
-const measureViewportJS = `new Promise(done => requestAnimationFrame(() =>
-	done({Width: innerWidth, Height: innerHeight, Scale: devicePixelRatio})))`
+// The keys match browser.Viewport's fields, so the result decodes as is.
+const viewportJS = `({Width: innerWidth, Height: innerHeight, Scale: devicePixelRatio})`
+
+// measureViewportJS waits a frame so a read follows any pending layout.
+const measureViewportJS = `new Promise(done => requestAnimationFrame(() => done(` + viewportJS + `)))`
+
+// settleViewportJS waits until the page sees a size other than was, or 10
+// frames for a change that keeps the size, as a reset with no override
+// does. The renderer applies an override or reset some frames after the CDP
+// call returns: read at once, the old size showed about one time in four,
+// and one frame later it still showed on a loaded CI runner.
+const settleViewportJS = `was => new Promise(done => {
+	let frames = 0;
+	const check = () => {
+		const now = ` + viewportJS + `;
+		if (++frames >= 10 || now.Width !== was.Width || now.Height !== was.Height || now.Scale !== was.Scale) done(now);
+		else requestAnimationFrame(check);
+	};
+	requestAnimationFrame(check);
+})`
 
 // Viewport applies the override or reset req asks for, then measures what
 // the page sees.
 func (b *Browser) Viewport(ctx context.Context, req browser.ViewportRequest) (browser.Viewport, error) {
 	var vp browser.Viewport
 	err := b.do(ctx, req.Tab, func(tctx context.Context) error {
-		if err := applyViewport(tctx, req); err != nil {
-			return err
-		}
 		var err error
-		vp, err = chromedp.Run(tctx, chromedp.Evaluate[browser.Viewport](measureViewportJS, chromedp.EvalAwaitPromise))
+		if !req.Reset && !req.Overrides() {
+			vp, err = chromedp.Run(tctx, chromedp.Evaluate[browser.Viewport](measureViewportJS, chromedp.EvalAwaitPromise))
+		} else {
+			vp, err = changeViewport(tctx, req)
+		}
 		return err
 	})
 	return vp, err
@@ -57,4 +74,22 @@ func applyViewport(ctx context.Context, req browser.ViewportRequest) error {
 func setTouch(ctx context.Context, on bool) error {
 	_, err := chromedp.Call(ctx, emulation.SetTouchEmulationEnabled, emulation.SetTouchEmulationEnabledParams{Enabled: on})
 	return err
+}
+
+// changeViewport measures before applying req, since the page only shows
+// the change some frames later and settling needs the old size to spot it.
+func changeViewport(ctx context.Context, req browser.ViewportRequest) (browser.Viewport, error) {
+	was, err := chromedp.Run(ctx, chromedp.Evaluate[browser.Viewport](viewportJS))
+	if err == nil {
+		err = applyViewport(ctx, req)
+	}
+	if err == nil {
+		was, err = settleViewport(ctx, was)
+	}
+	return was, err
+}
+
+func settleViewport(ctx context.Context, was browser.Viewport) (browser.Viewport, error) {
+	expr := fmt.Sprintf("(%s)({Width: %d, Height: %d, Scale: %g})", settleViewportJS, was.Width, was.Height, was.Scale)
+	return chromedp.Run(ctx, chromedp.Evaluate[browser.Viewport](expr, chromedp.EvalAwaitPromise))
 }
